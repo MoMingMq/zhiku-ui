@@ -101,7 +101,7 @@
     </div>
 
     <div class="el-register-footer">
-      <span>Copyright © 2018-{{ currentYear }} 疯狂的狮子Li All Rights Reserved.</span>
+      <span>Copyright © {{ currentYear }} 知库贡献者 All Rights Reserved.</span>
     </div>
   </div>
 </template>
