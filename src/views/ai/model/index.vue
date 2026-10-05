@@ -150,15 +150,18 @@
         <el-form-item v-if="form.modelType === '2'" label="向量维度" prop="embedDim">
           <el-input-number v-model="form.embedDim" :min="1" controls-position="right" />
           <el-button
-            v-for="dim in [1024, 1536, 7168]"
+            v-for="dim in [1024, 1536, 3072, 7168]"
             :key="dim"
             link
             type="primary"
             style="margin-left: 8px"
-            @click="form.embedDim = dim"
+            @click="setEmbedDim(dim)"
           >
             {{ dim }}
           </el-button>
+          <div class="form-tip" style="width: 100%; margin-left: 0">
+            向量维度决定向量库 collection 路由，须与所选 embedding 模型实际输出维度一致（如 bge-large-zh 1024、text-embedding-v3 1024、text-embedding-3-large 3072）
+          </div>
         </el-form-item>
         <el-form-item label="设为默认" prop="isDefault">
           <el-switch v-model="form.isDefault" active-value="1" inactive-value="0" />
@@ -454,12 +457,17 @@ const cancel = () => {
   resetForm();
 };
 
-/** 新增 */
+/** 新增（先开对话框再填模板——openDialog 内部会 reset 表单，先填会被清空） */
 const handleAdd = () => {
-  resetForm();
   templateKey.value = 'deepseek';
-  applyTemplate('deepseek');
   openDialog('新增模型');
+  applyTemplate('deepseek');
+};
+
+/** 快捷维度赋值并清除该字段校验（程序赋值不触发 change 校验） */
+const setEmbedDim = (dim: number) => {
+  form.value.embedDim = dim;
+  modelFormRef.value?.clearValidate('embedDim');
 };
 
 /** 修改 */
