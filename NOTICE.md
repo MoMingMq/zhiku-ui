@@ -13,9 +13,10 @@ Copyright (c) 2026 知库贡献者
 - @vueuse/core — MIT License
 - @wangeditor-next — MIT License
 - echarts — Apache License 2.0
-- vxe-table / vxe-pc-ui — 协议待核实（见 wiki/platform/open-source-license.md 待核实清单）
+- vxe-table / vxe-pc-ui — MIT License — Copyright (c) xuliangzhan
 - UnoCSS — MIT License
 - oxlint / oxfmt — MIT License
 
+以上协议已于 2026-10-05 逐项核实（来源：各项目官方仓库 LICENSE）。
 新增依赖时必须同步更新本清单（规范见 wiki/platform/open-source-license.md）。
 本仓库 LICENSE 文件为上游 MIT 许可证，按协议要求原样保留，不得删除或篡改。
