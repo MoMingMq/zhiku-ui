@@ -53,4 +53,13 @@ export function testAiModel(modelId: number | string): AxiosPromise<ModelTestRes
   });
 }
 
-export default { listAiModel, getAiModel, addAiModel, updateAiModel, delAiModel, testAiModel };
+// 模型参数设置（Map 承载：参数名→默认值，应用侧按值类型动态生成控件）
+export function updateModelParams(modelId: number | string, params: Record<string, unknown>) {
+  return request({
+    url: '/ai/model/' + modelId + '/params',
+    method: 'put',
+    data: params
+  });
+}
+
+export default { listAiModel, getAiModel, addAiModel, updateAiModel, delAiModel, testAiModel, updateModelParams };

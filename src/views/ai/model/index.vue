@@ -83,7 +83,7 @@
             <dict-tag :options="sys_normal_disable" :value="scope.row.status" />
           </template>
         </el-table-column>
-        <el-table-column label="操作" fixed="right" align="center" width="200" class-name="small-padding fixed-width">
+        <el-table-column label="操作" fixed="right" align="center" width="230" class-name="small-padding fixed-width">
           <template #default="scope">
             <el-tooltip content="测试连接" placement="top">
               <el-button
@@ -94,6 +94,9 @@
                 :loading="testingId === scope.row.modelId"
                 @click="handleTest(scope.row)"
               ></el-button>
+            </el-tooltip>
+            <el-tooltip content="参数设置" placement="top">
+              <el-button v-hasPermi="['ai:model:edit']" link type="warning" icon="Setting" @click="openParams(scope.row)"></el-button>
             </el-tooltip>
             <el-tooltip content="修改" placement="top">
               <el-button v-hasPermi="['ai:model:edit']" link type="primary" icon="Edit" @click="handleUpdate(scope.row)"></el-button>
@@ -170,7 +173,7 @@
           type="info"
           :closable="false"
           show-icon
-          title="温度、最大 Tokens 等推理参数在「应用」配置中按应用调整（模型侧使用默认值）"
+          title="推理参数（温度、max_tokens 等）通过列表行「参数设置」配置（Map 任意增删）；应用侧将按参数类型动态生成调整控件"
         />
       </el-form>
       <template #footer>
@@ -180,11 +183,61 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 模型参数设置对话框（Map 承载，任意增删参数项） -->
+    <el-dialog v-model="paramsDialog.visible" :title="paramsDialog.title" width="560px" append-to-body>
+      <div class="params-toolbar">
+        <span class="form-tip">参数名 → 默认值；数值/布尔/字符串均可，应用侧按值类型动态生成调整控件</span>
+        <el-button
+          v-for="p in presetParams"
+          :key="p.key"
+          size="small"
+          plain
+          type="primary"
+          :disabled="paramRows.some(r => r.key === p.key)"
+          @click="addPresetParam(p)"
+        >
+          + {{ p.key }}
+        </el-button>
+      </div>
+      <el-table :data="paramRows" border size="small">
+        <el-table-column label="参数名" min-width="160">
+          <template #default="scope">
+            <el-input v-model="scope.row.key" placeholder="如 temperature" />
+          </template>
+        </el-table-column>
+        <el-table-column label="参数值（默认）" min-width="160">
+          <template #default="scope">
+            <el-input v-model="scope.row.value" placeholder="数值 / true / false / 字符串" />
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="70" align="center">
+          <template #default="scope">
+            <el-button link type="danger" icon="Delete" @click="paramRows.splice(scope.$index, 1)"></el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-button
+        style="margin-top: 8px; width: 100%"
+        plain
+        icon="Plus"
+        :disabled="paramRows.length >= 20"
+        @click="paramRows.push({ key: '', value: '' })"
+      >
+        添加参数
+      </el-button>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="submitParams">确 定</el-button>
+          <el-button @click="paramsDialog.visible = false">取 消</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup name="Model" lang="ts">
-import { addAiModel, delAiModel, getAiModel, listAiModel, testAiModel, updateAiModel } from '@/api/ai/model';
+import { addAiModel, delAiModel, getAiModel, listAiModel, testAiModel, updateAiModel, updateModelParams } from '@/api/ai/model';
 import { AiModelForm, AiModelQuery, AiModelVO } from '@/api/ai/model/types';
 import { useLoading } from '@/hooks/async/useLoading';
 import { useFormDialog } from '@/hooks/dialog/useFormDialog';
@@ -421,6 +474,68 @@ const handleTest = async (row: AiModelVO) => {
   }
 };
 
+/** —— 模型参数设置（Map 承载，独立于编辑表单） —— */
+const paramsDialog = reactive({ visible: false, title: '参数设置' });
+const paramRows = ref<Array<{ key: string; value: string }>>([]);
+const paramsModelId = ref<number | string | undefined>(undefined);
+const paramsModelName = ref('');
+
+/** 常用参数快捷添加（含应用侧滑块渲染所需的常见项） */
+const presetParams = [
+  { key: 'temperature', value: '0.7' },
+  { key: 'top_p', value: '1' },
+  { key: 'max_tokens', value: '2048' },
+  { key: 'enable_search', value: 'false' }
+];
+
+/** 值类型自动识别：数值 / 布尔 / 字符串原样 */
+const parseParamValue = (raw: string): unknown => {
+  const trimmed = raw.trim();
+  if (trimmed === 'true') return true;
+  if (trimmed === 'false') return false;
+  if (trimmed !== '' && !Number.isNaN(Number(trimmed))) return Number(trimmed);
+  return raw;
+};
+
+const openParams = (row: AiModelVO) => {
+  paramsModelId.value = row.modelId;
+  paramsModelName.value = row.modelName;
+  paramRows.value = [];
+  try {
+    const params = row.params ? JSON.parse(row.params) : {};
+    paramRows.value = Object.entries(params).map(([key, value]) => ({ key, value: String(value) }));
+  } catch {
+    // params 非法时按空处理
+  }
+  paramsDialog.title = `参数设置 - ${row.modelName}`;
+  paramsDialog.visible = true;
+};
+
+const addPresetParam = (p: { key: string; value: string }) => {
+  paramRows.value.push({ key: p.key, value: p.value });
+};
+
+const submitParams = async () => {
+  if (!paramsModelId.value) return;
+  const params: Record<string, unknown> = {};
+  for (const row of paramRows.value) {
+    const key = row.key.trim();
+    if (!key) {
+      modal.msgError('参数名不能为空');
+      return;
+    }
+    if (key in params) {
+      modal.msgError(`参数名重复：${key}`);
+      return;
+    }
+    params[key] = parseParamValue(row.value);
+  }
+  await updateModelParams(paramsModelId.value, params);
+  modal.msgSuccess(`已保存 ${paramsModelName.value} 的 ${Object.keys(params).length} 个参数`);
+  paramsDialog.visible = false;
+  await getList();
+};
+
 onMounted(() => {
   getList();
 });
@@ -435,5 +550,18 @@ onMounted(() => {
   margin-left: 12px;
   font-size: 12px;
   color: var(--el-text-color-secondary);
+}
+
+.params-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+
+  .form-tip {
+    margin-left: 0;
+    margin-right: auto;
+  }
 }
 </style>
