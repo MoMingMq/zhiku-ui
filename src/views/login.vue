@@ -108,7 +108,7 @@
     </div>
 
     <div class="el-login-footer">
-      <span>Copyright © {{ currentYear }} 知库贡献者 All Rights Reserved.</span>
+      <span>Copyright © {{ currentYear }} 莫名 All Rights Reserved.</span>
     </div>
   </div>
 </template>
