@@ -40,3 +40,24 @@ export interface ModelTestResult {
   costMs: number;
   message: string;
 }
+
+/** 渲染组件类型（应用侧按此渲染参数调整控件） */
+export type ParamInputType = 'input' | 'number' | 'slider' | 'switch' | 'select';
+
+/** 模型参数定义（对标 业界方案：Map 承载 + 渲染组件元数据） */
+export interface ModelParamDef {
+  /** 参数名（透传模型 API 的键） */
+  name: string;
+  /** 显示名（应用侧控件 label，缺省用 name） */
+  label: string;
+  /** 默认值（类型由 inputType 决定） */
+  value: unknown;
+  /** 渲染组件：input 文本 / number 数字 / slider 滑块 / switch 开关 / select 下拉 */
+  inputType: ParamInputType;
+  /** slider/number 范围 */
+  min: number | undefined;
+  max: number | undefined;
+  step: number | undefined;
+  /** select 选项 */
+  options: string[] | undefined;
+}

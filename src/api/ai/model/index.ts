@@ -1,4 +1,4 @@
-import type { AiModelForm, AiModelQuery, AiModelVO, ModelTestResult } from './types';
+import type { AiModelForm, AiModelQuery, AiModelVO, ModelParamDef, ModelTestResult } from './types';
 import type { AxiosPromise, PageResult } from '@/utils/api-types';
 import request from '@/utils/request';
 
@@ -53,8 +53,16 @@ export function testAiModel(modelId: number | string): AxiosPromise<ModelTestRes
   });
 }
 
-// 模型参数设置（Map 承载：参数名→默认值，应用侧按值类型动态生成控件）
-export function updateModelParams(modelId: number | string, params: Record<string, unknown>) {
+// 模型参数定义列表（应用侧按 inputType 渲染组件）
+export function getModelParams(modelId: number | string): AxiosPromise<ModelParamDef[]> {
+  return request({
+    url: '/ai/model/' + modelId + '/params',
+    method: 'get'
+  });
+}
+
+// 模型参数设置（参数定义含渲染组件元数据）
+export function updateModelParams(modelId: number | string, params: ModelParamDef[]) {
   return request({
     url: '/ai/model/' + modelId + '/params',
     method: 'put',
@@ -62,4 +70,4 @@ export function updateModelParams(modelId: number | string, params: Record<strin
   });
 }
 
-export default { listAiModel, getAiModel, addAiModel, updateAiModel, delAiModel, testAiModel, updateModelParams };
+export default { listAiModel, getAiModel, addAiModel, updateAiModel, delAiModel, testAiModel, getModelParams, updateModelParams };

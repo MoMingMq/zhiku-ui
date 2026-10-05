@@ -184,45 +184,82 @@
       </template>
     </el-dialog>
 
-    <!-- 模型参数设置对话框（Map 承载，任意增删参数项） -->
-    <el-dialog v-model="paramsDialog.visible" :title="paramsDialog.title" width="560px" append-to-body>
+    <!-- 模型参数设置对话框（参数定义 + 渲染组件元数据，应用侧按组件渲染） -->
+    <el-dialog v-model="paramsDialog.visible" :title="paramsDialog.title" width="760px" append-to-body>
       <div class="params-toolbar">
-        <span class="form-tip">参数名 → 默认值；数值/布尔/字符串均可，应用侧按值类型动态生成调整控件</span>
+        <span class="form-tip">定义模型参数及其在应用侧的渲染组件（应用配置时按组件生成调整控件）</span>
         <el-button
           v-for="p in presetParams"
-          :key="p.key"
+          :key="p.name"
           size="small"
           plain
           type="primary"
-          :disabled="paramRows.some(r => r.key === p.key)"
-          @click="addPresetParam(p)"
+          :disabled="paramRows.some(r => r.name === p.name)"
+          @click="paramRows.push(JSON.parse(JSON.stringify(p)))"
         >
-          + {{ p.key }}
+          + {{ p.label || p.name }}
         </el-button>
       </div>
-      <el-table :data="paramRows" border size="small">
-        <el-table-column label="参数名" min-width="160">
-          <template #default="scope">
-            <el-input v-model="scope.row.key" placeholder="如 temperature" />
+      <div v-if="paramRows.length === 0" class="params-empty">暂无参数，可通过上方快捷按钮或"添加参数"新建</div>
+      <div v-for="(row, index) in paramRows" :key="index" class="param-item">
+        <div class="param-row-main">
+          <el-input v-model="row.name" placeholder="参数名（如 temperature）" style="width: 200px" />
+          <el-input v-model="row.label" placeholder="显示名（可选）" style="width: 140px" />
+          <el-select v-model="row.inputType" placeholder="渲染组件" style="width: 120px" @change="handleInputTypeChange(row)">
+            <el-option label="文本框" value="input" />
+            <el-option label="数字" value="number" />
+            <el-option label="滑块" value="slider" />
+            <el-option label="开关" value="switch" />
+            <el-option label="下拉" value="select" />
+          </el-select>
+          <div class="param-value-control">
+            <span class="param-value-label">默认值</span>
+            <el-input v-if="row.inputType === 'input'" v-model="row.value as string" placeholder="字符串" style="width: 160px" />
+            <el-input-number
+              v-else-if="row.inputType === 'number' || row.inputType === 'slider'"
+              v-model="row.value as number"
+              :min="row.inputType === 'slider' ? (row.min ?? undefined) : undefined"
+              :max="row.inputType === 'slider' ? (row.max ?? undefined) : undefined"
+              controls-position="right"
+              style="width: 160px"
+            />
+            <el-switch v-else-if="row.inputType === 'switch'" v-model="row.value as boolean" />
+            <el-select v-else-if="row.inputType === 'select'" v-model="row.value" placeholder="默认选项" style="width: 160px">
+              <el-option v-for="opt in row.options || []" :key="opt" :label="opt" :value="opt" />
+            </el-select>
+          </div>
+          <el-button link type="danger" icon="Delete" @click="paramRows.splice(index, 1)"></el-button>
+        </div>
+        <div v-if="row.inputType === 'slider' || row.inputType === 'number'" class="param-row-config">
+          <span class="param-value-label">{{ row.inputType === 'slider' ? '范围' : '限制' }}</span>
+          <el-input-number v-model="row.min" placeholder="最小" controls-position="right" style="width: 110px" />
+          <span class="param-value-label">~</span>
+          <el-input-number v-model="row.max" placeholder="最大" controls-position="right" style="width: 110px" />
+          <template v-if="row.inputType === 'slider'">
+            <span class="param-value-label">步长</span>
+            <el-input-number v-model="row.step" :min="0.01" :step="0.05" controls-position="right" style="width: 100px" />
           </template>
-        </el-table-column>
-        <el-table-column label="参数值（默认）" min-width="160">
-          <template #default="scope">
-            <el-input v-model="scope.row.value" placeholder="数值 / true / false / 字符串" />
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="70" align="center">
-          <template #default="scope">
-            <el-button link type="danger" icon="Delete" @click="paramRows.splice(scope.$index, 1)"></el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+        </div>
+        <div v-else-if="row.inputType === 'select'" class="param-row-config">
+          <span class="param-value-label">选项</span>
+          <el-select
+            v-model="row.options"
+            placeholder="输入后回车添加选项"
+            multiple
+            filterable
+            allow-create
+            default-first-option
+            style="width: 420px"
+            :reserve-keyword="false"
+          />
+        </div>
+      </div>
       <el-button
         style="margin-top: 8px; width: 100%"
         plain
         icon="Plus"
         :disabled="paramRows.length >= 20"
-        @click="paramRows.push({ key: '', value: '' })"
+        @click="paramRows.push({ name: '', label: '', value: '', inputType: 'input', min: undefined, max: undefined, step: undefined, options: undefined })"
       >
         添加参数
       </el-button>
@@ -238,7 +275,7 @@
 
 <script setup name="Model" lang="ts">
 import { addAiModel, delAiModel, getAiModel, listAiModel, testAiModel, updateAiModel, updateModelParams } from '@/api/ai/model';
-import { AiModelForm, AiModelQuery, AiModelVO } from '@/api/ai/model/types';
+import { AiModelForm, AiModelQuery, AiModelVO, ModelParamDef } from '@/api/ai/model/types';
 import { useLoading } from '@/hooks/async/useLoading';
 import { useFormDialog } from '@/hooks/dialog/useFormDialog';
 import { useSearchReset } from '@/hooks/form/useSearchReset';
@@ -474,27 +511,31 @@ const handleTest = async (row: AiModelVO) => {
   }
 };
 
-/** —— 模型参数设置（Map 承载，独立于编辑表单） —— */
+/** —— 模型参数设置（参数定义含渲染组件元数据，独立于编辑表单） —— */
 const paramsDialog = reactive({ visible: false, title: '参数设置' });
-const paramRows = ref<Array<{ key: string; value: string }>>([]);
+const paramRows = ref<ModelParamDef[]>([]);
 const paramsModelId = ref<number | string | undefined>(undefined);
 const paramsModelName = ref('');
 
-/** 常用参数快捷添加（含应用侧滑块渲染所需的常见项） */
-const presetParams = [
-  { key: 'temperature', value: '0.7' },
-  { key: 'top_p', value: '1' },
-  { key: 'max_tokens', value: '2048' },
-  { key: 'enable_search', value: 'false' }
+/** 常用参数快捷添加（带渲染组件与范围） */
+const presetParams: ModelParamDef[] = [
+  { name: 'temperature', label: '温度', value: 0.7, inputType: 'slider', min: 0, max: 2, step: 0.1, options: undefined },
+  { name: 'top_p', label: 'Top P', value: 1, inputType: 'slider', min: 0, max: 1, step: 0.05, options: undefined },
+  { name: 'max_tokens', label: '最大 Tokens', value: 2048, inputType: 'number', min: 1, max: 131072, step: undefined, options: undefined },
+  { name: 'enable_search', label: '联网搜索', value: false, inputType: 'switch', min: undefined, max: undefined, step: undefined, options: undefined }
 ];
 
-/** 值类型自动识别：数值 / 布尔 / 字符串原样 */
-const parseParamValue = (raw: string): unknown => {
-  const trimmed = raw.trim();
-  if (trimmed === 'true') return true;
-  if (trimmed === 'false') return false;
-  if (trimmed !== '' && !Number.isNaN(Number(trimmed))) return Number(trimmed);
-  return raw;
+/** 渲染组件切换：重置不兼容的默认值 */
+const handleInputTypeChange = (row: ModelParamDef) => {
+  if (row.inputType === 'switch') {
+    row.value = false;
+  } else if (row.inputType === 'number' || row.inputType === 'slider') {
+    row.value = typeof row.value === 'number' ? row.value : 0;
+  } else if (row.inputType === 'select') {
+    row.value = row.options?.[0] ?? '';
+  } else {
+    row.value = row.value == null ? '' : String(row.value);
+  }
 };
 
 const openParams = (row: AiModelVO) => {
@@ -502,8 +543,10 @@ const openParams = (row: AiModelVO) => {
   paramsModelName.value = row.modelName;
   paramRows.value = [];
   try {
-    const params = row.params ? JSON.parse(row.params) : {};
-    paramRows.value = Object.entries(params).map(([key, value]) => ({ key, value: String(value) }));
+    const params = row.params ? JSON.parse(row.params) : [];
+    if (Array.isArray(params)) {
+      paramRows.value = params;
+    }
   } catch {
     // params 非法时按空处理
   }
@@ -511,27 +554,24 @@ const openParams = (row: AiModelVO) => {
   paramsDialog.visible = true;
 };
 
-const addPresetParam = (p: { key: string; value: string }) => {
-  paramRows.value.push({ key: p.key, value: p.value });
-};
-
 const submitParams = async () => {
   if (!paramsModelId.value) return;
-  const params: Record<string, unknown> = {};
   for (const row of paramRows.value) {
-    const key = row.key.trim();
-    if (!key) {
+    if (!row.name?.trim()) {
       modal.msgError('参数名不能为空');
       return;
     }
-    if (key in params) {
-      modal.msgError(`参数名重复：${key}`);
+    if (row.inputType === 'slider' && (row.min == null || row.max == null)) {
+      modal.msgError(`参数 ${row.name}：滑块组件必须配置最小值/最大值`);
       return;
     }
-    params[key] = parseParamValue(row.value);
+    if (row.inputType === 'select' && !row.options?.length) {
+      modal.msgError(`参数 ${row.name}：下拉组件必须配置选项`);
+      return;
+    }
   }
-  await updateModelParams(paramsModelId.value, params);
-  modal.msgSuccess(`已保存 ${paramsModelName.value} 的 ${Object.keys(params).length} 个参数`);
+  await updateModelParams(paramsModelId.value, paramRows.value);
+  modal.msgSuccess(`已保存 ${paramsModelName.value} 的 ${paramRows.value.length} 个参数`);
   paramsDialog.visible = false;
   await getList();
 };
@@ -563,5 +603,46 @@ onMounted(() => {
     margin-left: 0;
     margin-right: auto;
   }
+}
+
+.params-empty {
+  padding: 16px 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+}
+
+.param-item {
+  padding: 10px 8px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.param-row-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.param-row-config {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-left: 4px;
+}
+
+.param-value-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.param-value-label {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  white-space: nowrap;
 }
 </style>
