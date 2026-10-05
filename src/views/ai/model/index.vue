@@ -157,17 +157,6 @@
             {{ dim }}
           </el-button>
         </el-form-item>
-        <template v-if="form.modelType === '1'">
-          <el-form-item label="温度" prop="temperature">
-            <el-slider v-model="form.temperature" :min="0" :max="2" :step="0.1" show-input style="width: 90%" />
-          </el-form-item>
-          <el-form-item label="最大 Tokens" prop="maxTokens">
-            <el-input-number v-model="form.maxTokens" :min="1" :max="131072" controls-position="right" />
-          </el-form-item>
-          <el-form-item label="Top P" prop="topP">
-            <el-input-number v-model="form.topP" :min="0" :max="1" :step="0.05" controls-position="right" />
-          </el-form-item>
-        </template>
         <el-form-item label="设为默认" prop="isDefault">
           <el-switch v-model="form.isDefault" active-value="1" inactive-value="0" />
           <span class="form-tip">每类型至多一个默认模型（新建知识库/应用时预选）</span>
@@ -177,6 +166,12 @@
             <el-radio v-for="dict in sys_normal_disable" :key="dict.value" :value="dict.value">{{ dict.label }}</el-radio>
           </el-radio-group>
         </el-form-item>
+        <el-alert
+          type="info"
+          :closable="false"
+          show-icon
+          title="温度、最大 Tokens 等推理参数在「应用」配置中按应用调整（模型侧使用默认值）"
+        />
       </el-form>
       <template #footer>
         <div class="dialog-footer">
@@ -284,10 +279,7 @@ const initFormData: AiModelForm = {
   apiKey: undefined,
   embedDim: undefined,
   isDefault: '0',
-  status: '0',
-  temperature: 0.7,
-  maxTokens: 2048,
-  topP: 1
+  status: '0'
 };
 
 const data = reactive<PageData<AiModelForm, AiModelQuery>>({
@@ -380,38 +372,23 @@ const handleAdd = () => {
   openDialog('新增模型');
 };
 
-/** 修改（解析 params JSON 到独立参数字段） */
+/** 修改 */
 const handleUpdate = async (row?: Partial<AiModelVO>) => {
   resetForm();
   const modelId = row?.modelId || ids.value[0];
   const res = await getAiModel(modelId);
   const vo = res.data;
+  // apiKey 不回显（留空=不修改）；params 为模型默认参数，推理参数由应用侧覆盖配置
   Object.assign(form.value, vo, { apiKey: undefined });
-  try {
-    const params = vo.params ? JSON.parse(vo.params) : {};
-    form.value.temperature = params.temperature ?? initFormData.temperature;
-    form.value.maxTokens = params.maxTokens ?? initFormData.maxTokens;
-    form.value.topP = params.topP ?? initFormData.topP;
-  } catch {
-    // params 非法时保持默认值
-  }
   templateKey.value = 'custom';
   showDialog('修改模型');
 };
 
-/** 提交（组装 params JSON） */
+/** 提交 */
 const submitForm = () => {
   modelFormRef.value?.validate(async (valid: boolean) => {
     if (valid) {
-      const submitData = {
-        ...form.value,
-        params: JSON.stringify({
-          temperature: form.value.temperature,
-          maxTokens: form.value.maxTokens,
-          topP: form.value.topP
-        })
-      };
-      form.value.modelId ? await updateAiModel(submitData) : await addAiModel(submitData);
+      form.value.modelId ? await updateAiModel(form.value) : await addAiModel(form.value);
       modal.msgSuccess('操作成功');
       closeDialog();
       await getList();

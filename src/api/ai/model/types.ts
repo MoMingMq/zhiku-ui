@@ -27,10 +27,6 @@ export interface AiModelForm {
   embedDim: number | undefined;
   isDefault: string;
   status: string;
-  /** 默认参数（独立字段，提交时组装为 params JSON） */
-  temperature: number;
-  maxTokens: number;
-  topP: number;
 }
 
 export interface AiModelQuery extends PageQuery {
