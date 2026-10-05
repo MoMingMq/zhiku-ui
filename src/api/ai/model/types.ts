@@ -39,6 +39,8 @@ export interface ModelTestResult {
   success: boolean;
   costMs: number;
   message: string;
+  /** 实测向量维度（embedding 类型返回，后端已自动回填） */
+  embedDim: number | undefined;
 }
 
 /** 渲染组件类型（应用侧按此渲染参数调整控件） */

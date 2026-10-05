@@ -160,7 +160,7 @@
             {{ dim }}
           </el-button>
           <div class="form-tip" style="width: 100%; margin-left: 0">
-            向量维度决定向量库 collection 路由，须与所选 embedding 模型实际输出维度一致（如 bge-large-zh 1024、text-embedding-v3 1024、text-embedding-3-large 3072）
+            可留空：保存后点击列表「测试连接」，将按模型实际输出自动回填（决定向量库 collection 路由，如 bge-large-zh 1024、Qwen3-Embedding-8B 4096）
           </div>
         </el-form-item>
         <el-form-item label="设为默认" prop="isDefault">
@@ -384,16 +384,15 @@ const data = reactive<PageData<AiModelForm, AiModelQuery>>({
     modelType: undefined,
     status: undefined
   },
-  rules: {
-    modelName: [{ required: true, message: '模型名称不能为空', trigger: 'blur' }],
-    modelType: [{ required: true, message: '模型类型不能为空', trigger: 'change' }],
-    baseUrl: [
-      { required: true, message: 'API 地址不能为空', trigger: 'blur' },
-      { type: 'url', message: '必须是合法 URL（http/https）', trigger: 'blur' }
-    ],
-    modelCode: [{ required: true, message: '模型标识不能为空', trigger: 'blur' }],
-    embedDim: [{ required: true, message: 'Embedding 模型必须配置向量维度', trigger: 'blur' }]
-  }
+    rules: {
+      modelName: [{ required: true, message: '模型名称不能为空', trigger: 'blur' }],
+      modelType: [{ required: true, message: '模型类型不能为空', trigger: 'change' }],
+      baseUrl: [
+        { required: true, message: 'API 地址不能为空', trigger: 'blur' },
+        { type: 'url', message: '必须是合法 URL（http/https）', trigger: 'blur' }
+      ],
+      modelCode: [{ required: true, message: '模型标识不能为空', trigger: 'blur' }]
+    }
 });
 
 const { queryParams, form, rules } = toRefs<PageData<AiModelForm, AiModelQuery>>(data);
@@ -503,7 +502,7 @@ const handleDelete = async (row?: Partial<AiModelVO>) => {
   modal.msgSuccess('删除成功');
 };
 
-/** 连通性测试 */
+/** 连通性测试（embedding 类型成功后后端已自动回填维度，刷新列表同步显示） */
 const handleTest = async (row: AiModelVO) => {
   testingId.value = row.modelId;
   try {
@@ -511,6 +510,9 @@ const handleTest = async (row: AiModelVO) => {
     const result = res.data;
     if (result?.success) {
       modal.msgSuccess(`${row.modelName}：${result.message}（${result.costMs}ms）`);
+      if (result.embedDim) {
+        await getList();
+      }
     } else {
       modal.msgError(`${row.modelName} 连接失败：${result?.message || '未知错误'}`);
     }
