@@ -197,7 +197,7 @@ import { useSearchToggle } from '@/hooks/form/useSearchToggle';
 import { useTableSelection } from '@/hooks/table/useTableSelection';
 import download from '@/plugins/download';
 import modal from '@/plugins/modal';
-import { parseTime } from '@/utils/ruoyi';
+import { parseTime } from '@/utils/zhiku';
 
 const router = useRouter();
 

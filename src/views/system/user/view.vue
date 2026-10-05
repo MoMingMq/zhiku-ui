@@ -45,7 +45,7 @@ import type { RoleVO } from '@/api/system/role/types';
 import type { UserVO } from '@/api/system/user/types';
 import api from '@/api/system/user';
 import { useDict } from '@/utils/dict';
-import { selectDictLabel } from '@/utils/ruoyi';
+import { selectDictLabel } from '@/utils/zhiku';
 
 const { sys_normal_disable, sys_user_gender } = toRefs<any>(useDict('sys_normal_disable', 'sys_user_gender'));
 

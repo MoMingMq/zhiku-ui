@@ -111,7 +111,7 @@ import { RoleVO, RoleQuery } from '@/api/system/role/types';
 import { useDialogState } from '@/hooks/dialog/useDialogState';
 import { useDateRangeQuery } from '@/hooks/form/useDateRangeQuery';
 import { useDict } from '@/utils/dict';
-import { parseTime } from '@/utils/ruoyi';
+import { parseTime } from '@/utils/zhiku';
 
 interface PropType {
   modelValue?: RoleVO[] | RoleVO | undefined;

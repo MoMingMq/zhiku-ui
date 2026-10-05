@@ -1,8 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/package",
-  "name": "ruoyi-vue-plus",
+  "name": "zhiku-ui",
   "version": "6.0.0",
-  "description": "RuoYi-Vue-Plus后台管理系统",
+  "description": "知库 ZhiKu 企业 AI 知识库平台前端",
   "license": "MIT",
   "author": "LionLi",
   "repository": {

@@ -201,7 +201,7 @@ import { useSearchToggle } from '@/hooks/form/useSearchToggle';
 import { useTreeTableExpand } from '@/hooks/tree/useTreeTableExpand';
 import modal from '@/plugins/modal';
 import { useDict } from '@/utils/dict';
-import { handleTree, parseTime } from '@/utils/ruoyi';
+import { handleTree, parseTime } from '@/utils/zhiku';
 
 interface DeptOptionsType {
   deptId: number | string;

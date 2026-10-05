@@ -408,7 +408,7 @@ import { DictTypeForm, DictTypeQuery, DictTypeVO } from '@/api/system/dict/type/
 import modal from '@/plugins/modal';
 import { useDictStore } from '@/store/modules/dict';
 import { download as requestDownload } from '@/utils/request';
-import { parseTime } from '@/utils/ruoyi';
+import { parseTime } from '@/utils/zhiku';
 
 const typeList = ref<DictTypeVO[]>([]);
 const typeLoading = ref(true);

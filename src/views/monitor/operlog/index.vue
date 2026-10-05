@@ -217,7 +217,7 @@ import { useTableSortQuery } from '@/hooks/table/useTableSortQuery';
 import modal from '@/plugins/modal';
 import { useDict } from '@/utils/dict';
 import { download as requestDownload } from '@/utils/request';
-import { parseTime, selectDictLabel } from '@/utils/ruoyi';
+import { parseTime, selectDictLabel } from '@/utils/zhiku';
 import OperInfoDialog from './operInfoDialog.vue';
 
 const { sys_oper_type, sys_common_status, sys_device_type } = toRefs<any>(

@@ -164,7 +164,7 @@ import tab from '@/plugins/tab';
 import router from '@/router';
 import { useDict } from '@/utils/dict';
 import { download as requestDownload } from '@/utils/request';
-import { parseTime } from '@/utils/ruoyi';
+import { parseTime } from '@/utils/zhiku';
 
 const route = useRoute();
 const { wf_business_status } = toRefs<any>(useDict('wf_business_status'));

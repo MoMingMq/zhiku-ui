@@ -15,7 +15,7 @@
         <el-form-item prop="packageName">
           <template #label>
             生成包路径
-            <el-tooltip content="生成在哪个java包下，例如 com.ruoyi.system" placement="top">
+            <el-tooltip content="生成在哪个java包下，例如 org.zhiku.system" placement="top">
               <el-icon><question-filled /></el-icon>
             </el-tooltip>
           </template>
@@ -317,7 +317,7 @@
 import type { FormInstance } from 'element-plus';
 import { listMenu } from '@/api/system/menu';
 import { propTypes } from '@/utils/propTypes';
-import { handleTree } from '@/utils/ruoyi';
+import { handleTree } from '@/utils/zhiku';
 
 interface MenuOptionsType {
   menuId: number | string;

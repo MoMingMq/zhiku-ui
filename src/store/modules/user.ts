@@ -3,7 +3,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import type { UserInfo } from '@/api/system/user/types';
 import type { LoginData, LoginResult } from '@/api/types';
-import type { RuoYiAjaxResult } from '@/utils/api-types';
+import type { AjaxResult } from '@/utils/api-types';
 import { getInfo as getUserInfo, login as loginApi, logout as logoutApi } from '@/api/login';
 import defAva from '@/assets/images/profile.jpg';
 import { getToken, removeToken, setToken } from '@/utils/auth';
@@ -25,7 +25,7 @@ export const useUserStore = defineStore('user', () => {
   const login = async (userInfo: LoginData): Promise<void> => {
     const [err, res] = await to(loginApi(userInfo));
     if (res) {
-      const data = (res as RuoYiAjaxResult<LoginResult>).data;
+      const data = (res as AjaxResult<LoginResult>).data;
       if (!data?.access_token) {
         return Promise.reject(err);
       }
@@ -40,7 +40,7 @@ export const useUserStore = defineStore('user', () => {
   const getInfo = async (): Promise<void> => {
     const [err, res] = await to(getUserInfo());
     if (res) {
-      const data = (res as RuoYiAjaxResult<UserInfo>).data;
+      const data = (res as AjaxResult<UserInfo>).data;
       if (!data?.user) {
         return Promise.reject(err);
       }

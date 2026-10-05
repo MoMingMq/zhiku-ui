@@ -129,7 +129,7 @@ import { useSearchReset } from '@/hooks/form/useSearchReset';
 import { useSearchToggle } from '@/hooks/form/useSearchToggle';
 import { useTreeTableExpand } from '@/hooks/tree/useTreeTableExpand';
 import modal from '@/plugins/modal';
-import { handleTree } from '@/utils/ruoyi';
+import { handleTree } from '@/utils/zhiku';
 
 type CategoryOption = {
   categoryId: number;

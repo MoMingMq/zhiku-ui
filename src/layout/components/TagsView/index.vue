@@ -105,7 +105,7 @@ import tab from '@/plugins/tab';
 import { usePermissionStore } from '@/store/modules/permission';
 import { useSettingsStore } from '@/store/modules/settings';
 import { useTagsViewStore } from '@/store/modules/tagsView';
-import { getNormalPath } from '@/utils/ruoyi';
+import { getNormalPath } from '@/utils/zhiku';
 import ScrollPane from './ScrollPane.vue';
 
 const visible = ref(false);

@@ -2,7 +2,7 @@ import type { LoadingInstance } from 'element-plus';
 import axiosModule from 'axios';
 import errorCode from '@/utils/errorCode';
 import { extractErrorMessage, globalHeaders } from '@/utils/request';
-import { blobValidate } from '@/utils/ruoyi';
+import { blobValidate } from '@/utils/zhiku';
 import { saveBlob } from '@/utils/save';
 
 const axios = axiosModule as any;

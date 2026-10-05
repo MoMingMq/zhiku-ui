@@ -33,7 +33,7 @@ src/
 ├─ hooks/       # useLoading / useDialogState / useTableSelection / useSearchReset...
 ├─ store/       # Pinia：user / permission / dict / tagsView / notice...
 ├─ views/       # 页面（system / monitor / tool / workflow / demo）
-└─ gen/         # 代码生成 FreeMarker 模板（与后端 ruoyi-gen 配套）
+└─ gen/         # 代码生成 FreeMarker 模板（与后端 zhiku-gen 配套）
 ```
 
 ## 开源协议

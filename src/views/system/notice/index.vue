@@ -239,7 +239,7 @@ import { useTableSelection } from '@/hooks/table/useTableSelection';
 import modal from '@/plugins/modal';
 import { useDict } from '@/utils/dict';
 import { resolveOssContent } from '@/utils/ossContent';
-import { parseTime } from '@/utils/ruoyi';
+import { parseTime } from '@/utils/zhiku';
 import { sanitizeHtml } from '@/utils/sanitize';
 
 const { sys_notice_status, sys_notice_type } = toRefs<any>(useDict('sys_notice_status', 'sys_notice_type'));

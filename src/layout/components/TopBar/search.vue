@@ -90,7 +90,7 @@ import type { RouteRecordRaw } from 'vue-router';
 import { Search } from '@element-plus/icons-vue';
 import { usePermissionStore } from '@/store/modules/permission';
 import { useSettingsStore } from '@/store/modules/settings';
-import { getNormalPath } from '@/utils/ruoyi';
+import { getNormalPath } from '@/utils/zhiku';
 import { isHttp } from '@/utils/validate';
 
 type SearchMenuItem = {

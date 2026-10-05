@@ -9,7 +9,7 @@ import { getToken } from '@/utils/auth';
 import { decryptBase64, decryptWithAes, encryptBase64, encryptWithAes, generateAesKey } from '@/utils/crypto';
 import { errorCode } from '@/utils/errorCode';
 import { decrypt, encrypt } from '@/utils/jsencrypt';
-import { blobValidate, tansParams } from '@/utils/ruoyi';
+import { blobValidate, tansParams } from '@/utils/zhiku';
 import { saveBlob } from '@/utils/save';
 
 /** axios 1.13 + TS6：默认导出在类型上会被解析为不可调用的 export= 形态 */

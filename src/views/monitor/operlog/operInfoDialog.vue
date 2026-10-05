@@ -68,7 +68,7 @@ import VueJsonPretty from 'vue-json-pretty';
 import type { OperLogForm } from '@/api/monitor/operlog/types';
 import 'vue-json-pretty/lib/styles.css';
 import { useDict } from '@/utils/dict';
-import { parseTime, selectDictLabel } from '@/utils/ruoyi';
+import { parseTime, selectDictLabel } from '@/utils/zhiku';
 
 const open = ref(false);
 const info = ref<OperLogForm | null>(null);

@@ -70,7 +70,7 @@ import { getAuthRole, updateAuthRole } from '@/api/system/user';
 import { UserForm } from '@/api/system/user/types';
 import modal from '@/plugins/modal';
 import tab from '@/plugins/tab';
-import { parseTime } from '@/utils/ruoyi';
+import { parseTime } from '@/utils/zhiku';
 
 const route = useRoute();
 

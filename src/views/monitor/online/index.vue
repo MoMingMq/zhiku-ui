@@ -102,7 +102,7 @@ import { forceLogout, list as initData } from '@/api/monitor/online';
 import { OnlineQuery, OnlineVO } from '@/api/monitor/online/types';
 import modal from '@/plugins/modal';
 import { useDict } from '@/utils/dict';
-import { parseTime } from '@/utils/ruoyi';
+import { parseTime } from '@/utils/zhiku';
 
 const { sys_device_type } = toRefs<any>(useDict('sys_device_type'));
 

@@ -32,7 +32,7 @@ import modal from '@/plugins/modal';
 import tab from '@/plugins/tab';
 import { useDict } from '@/utils/dict';
 import { propTypes } from '@/utils/propTypes';
-import { parseTime } from '@/utils/ruoyi';
+import { parseTime } from '@/utils/zhiku';
 
 const { sys_device_type } = toRefs<any>(useDict('sys_device_type'));
 

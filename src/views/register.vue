@@ -7,7 +7,7 @@
         <p class="brand-desc">
           真正面向企业级的应用框架 组件化 模块化 轻耦合 高扩展 针对企业痛点 业界一流技术栈
           <br />
-          重写 RuoYi-Vue 所有功能 集成 Sa-Token、Mybatis-Plus、WarmFlow、SpringDoc、Hutool、OSS 定期同步。
+          企业 AI 知识库平台：文档上传、RAG 检索问答与引用溯源，支持私有化部署。
         </p>
         <div class="brand-highlights">
           <span v-for="item in highlights" :key="item" class="highlight-chip">{{ item }}</span>

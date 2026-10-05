@@ -1,4 +1,4 @@
-import { addDateRange } from '@/utils/ruoyi';
+import { addDateRange } from '@/utils/zhiku';
 
 export function useDateRangeQuery(propName?: string) {
   const dateRange = ref<any>(['', '']);

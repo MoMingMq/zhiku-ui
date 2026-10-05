@@ -244,7 +244,7 @@ import { useTreeCollapsed } from '@/hooks/tree/useTreeCollapsed';
 import modal from '@/plugins/modal';
 import { useDict } from '@/utils/dict';
 import { download as requestDownload } from '@/utils/request';
-import { parseTime } from '@/utils/ruoyi';
+import { parseTime } from '@/utils/zhiku';
 
 const { sys_normal_disable } = toRefs<any>(useDict('sys_normal_disable'));
 

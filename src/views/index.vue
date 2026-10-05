@@ -2,14 +2,13 @@
   <div class="home">
     <section class="hero-panel">
       <div class="hero-copy">
-        <h1>RuoYi-Vue-Plus 控制台</h1>
+        <h1>知库 ZhiKu 控制台</h1>
         <p>
-          企业级后台管理系统 重写 RuoYi-Vue 所有功能 集成 Sa-Token、Mybatis-Plus、WarmFlow、SpringDoc、Hutool、OSS
-          等组件
+          企业 AI 知识库平台 基于开源企业级框架二次开发 集成 Sa-Token、Mybatis-Plus、WarmFlow、Liquibase、Spring AI 等组件，自建 RAG 检索问答与引用溯源
         </p>
         <div class="hero-actions">
-          <el-button type="primary" @click="goTarget('https://gitee.com/dromara/RuoYi-Vue-Plus')">查看源码</el-button>
-          <el-button plain @click="goTarget('https://plus-doc.dromara.org/#/ruoyi-vue-plus/changlog')">
+          <el-button type="primary" @click="goTarget('https://github.com/MoMingMq/zhiku')">查看源码</el-button>
+          <el-button plain @click="goTarget('https://github.com/MoMingMq/zhiku/releases')">
             更新日志
           </el-button>
         </div>
@@ -67,39 +66,39 @@
 <script setup name="Index" lang="ts">
 const products = [
   {
-    name: 'RuoYi-Vue-Plus',
+    name: '知库后端 zhiku',
     version: 'v6.0.0',
-    summary: '面向分布式集群场景的后台管理系统，保持现有业务接口与权限逻辑，适合先完成前端壳升级。',
-    tags: ['Vue 3', 'Element Plus', 'Spring Boot', 'Sa-Token'],
+    summary: 'Spring Boot 4 单体多模块架构，JDK21 + Sa-Token + MyBatis-Plus + Liquibase 自动化数据库初始化。',
+    tags: ['Spring Boot', 'JDK 21', 'Sa-Token', 'Liquibase'],
     primaryLabel: '访问 GitHub',
-    primaryUrl: 'https://github.com/dromara/RuoYi-Vue-Plus',
-    secondaryLabel: '查看更新日志',
-    secondaryUrl: 'https://plus-doc.dromara.org/#/ruoyi-vue-plus/changlog'
+    primaryUrl: 'https://github.com/MoMingMq/zhiku',
+    secondaryLabel: '查看发布',
+    secondaryUrl: 'https://github.com/MoMingMq/zhiku/releases'
   },
   {
-    name: 'RuoYi-Cloud-Plus',
+    name: '知库前端 zhiku-ui',
     version: 'v6.0.0',
-    summary: '微服务通用权限管理系统，适合更复杂的服务治理场景，也可以沿用同样的前端升级思路。',
-    tags: ['Spring Cloud', 'Gateway', 'Nacos', 'Dubbo'],
+    summary: 'Vue 3.5 + TypeScript + Element Plus + Vite 工程化前端，hooks 化状态管理与主题体系。',
+    tags: ['Vue 3', 'TypeScript', 'Element Plus', 'Vite'],
     primaryLabel: '访问 GitHub',
-    primaryUrl: 'https://github.com/dromara/RuoYi-Cloud-Plus',
-    secondaryLabel: '查看更新日志',
-    secondaryUrl: 'https://plus-doc.dromara.org/#/ruoyi-cloud-plus/changlog'
+    primaryUrl: 'https://github.com/MoMingMq/zhiku-ui',
+    secondaryLabel: '查看发布',
+    secondaryUrl: 'https://github.com/MoMingMq/zhiku-ui/releases'
   }
 ];
 
 const capabilityGroups = [
   {
-    title: '后端基建',
-    items: ['Spring Boot / Spring Cloud', 'Sa-Token 认证与权限', 'MySQL / Redis', '代码生成器']
+    title: '平台基建',
+    items: ['Sa-Token 认证与权限', 'MySQL / Redis', 'Liquibase 自动建库', '代码生成器']
   },
   {
-    title: '平台能力',
-    items: ['动态菜单与按钮权限', '监控、日志、在线用户', '任务调度与工作流', '文件存储与多云适配']
+    title: '业务能力',
+    items: ['动态菜单与按钮权限', '监控、日志、在线用户', '工作流 WarmFlow', '文件存储与多云适配']
   },
   {
-    title: '前端方向',
-    items: ['UI 卡片化', '主题与布局统一', '通用页面容器规范化', '企业化布局']
+    title: 'AI 规划',
+    items: ['自建 RAG 检索问答', '引用溯源 citation', 'MCP 工具暴露', '本体知识层预留']
   }
 ];
 

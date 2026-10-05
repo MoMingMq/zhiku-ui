@@ -45,7 +45,7 @@
 
 <script setup lang="ts">
 import { RouteRecordRaw } from 'vue-router';
-import { getNormalPath } from '@/utils/ruoyi';
+import { getNormalPath } from '@/utils/zhiku';
 import { isExternal } from '@/utils/validate';
 import AppLink from './Link.vue';
 

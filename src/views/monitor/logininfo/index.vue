@@ -165,7 +165,7 @@ import { useTableSortQuery } from '@/hooks/table/useTableSortQuery';
 import modal from '@/plugins/modal';
 import { useDict } from '@/utils/dict';
 import { download as requestDownload } from '@/utils/request';
-import { parseTime } from '@/utils/ruoyi';
+import { parseTime } from '@/utils/zhiku';
 
 const { sys_device_type } = toRefs<any>(useDict('sys_device_type'));
 const { sys_common_status } = toRefs<any>(useDict('sys_common_status'));

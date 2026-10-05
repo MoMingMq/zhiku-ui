@@ -375,7 +375,7 @@ import { useSearchReset } from '@/hooks/form/useSearchReset';
 import { useSearchToggle } from '@/hooks/form/useSearchToggle';
 import modal from '@/plugins/modal';
 import { useDict } from '@/utils/dict';
-import { handleTree } from '@/utils/ruoyi';
+import { handleTree } from '@/utils/zhiku';
 
 interface MenuOptionsType {
   menuId: number;

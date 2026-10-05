@@ -2,7 +2,7 @@ import type { RoleVO } from '@/api/system/role/types';
 import type { PageResult } from '@/api/types';
 import type { AxiosPromise } from '@/utils/api-types';
 import request from '@/utils/request';
-import { parseStrEmpty } from '@/utils/ruoyi';
+import { parseStrEmpty } from '@/utils/zhiku';
 import type { DeptTreeVO } from './../dept/types';
 import type { UserForm, UserInfoVO, UserProfileForm, UserQuery, UserVO } from './types';
 
