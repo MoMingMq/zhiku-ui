@@ -127,7 +127,7 @@
         </el-form-item>
         <el-form-item label="接入模板" prop="provider">
           <el-select v-model="templateKey" placeholder="选择预置模板自动填充" style="width: 100%" @change="applyTemplate">
-            <el-option v-for="t in providerTemplates" :key="t.key" :label="t.label" :value="t.key" />
+            <el-option v-for="t in availableTemplates" :key="t.key" :label="t.label" :value="t.key" />
           </el-select>
         </el-form-item>
         <el-form-item label="API 地址" prop="baseUrl">
@@ -210,15 +210,69 @@ const modelFormRef = ref<ElFormInstance>();
 const queryFormRef = ref<ElFormInstance>();
 const testingId = ref<number | string | undefined>(undefined);
 
-/** 接入模板（provider 后端恒为 openai_compatible，模板仅用于自动填充） */
+/**
+ * 接入模板（provider 后端恒为 openai_compatible，模板仅用于自动填充）
+ * types 声明模板支持的模型类型（1=LLM 2=Embedding 3=Rerank），下拉按当前类型过滤
+ */
 const providerTemplates = [
-  { key: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com', chatCode: 'deepseek-chat', embedCode: '' },
-  { key: 'qwen', label: '通义千问（兼容模式）', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', chatCode: 'qwen-plus', embedCode: 'text-embedding-v3' },
-  { key: 'siliconflow', label: 'SiliconFlow', baseUrl: 'https://api.siliconflow.cn/v1', chatCode: 'deepseek-ai/DeepSeek-V3', embedCode: 'BAAI/bge-large-zh-v1.5' },
-  { key: 'ollama', label: 'Ollama（本地）', baseUrl: 'http://localhost:11434', chatCode: 'qwen2.5:7b', embedCode: 'nomic-embed-text' },
-  { key: 'custom', label: '自定义', baseUrl: '', chatCode: '', embedCode: '' }
+  {
+    key: 'deepseek',
+    label: 'DeepSeek',
+    types: ['1'],
+    baseUrl: 'https://api.deepseek.com',
+    chatCode: 'deepseek-chat',
+    embedCode: '',
+    rerankCode: ''
+  },
+  {
+    key: 'qwen',
+    label: '通义千问（兼容模式）',
+    types: ['1', '2'],
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    chatCode: 'qwen-plus',
+    embedCode: 'text-embedding-v3',
+    rerankCode: ''
+  },
+  {
+    key: 'siliconflow',
+    label: 'SiliconFlow',
+    types: ['1', '2', '3'],
+    baseUrl: 'https://api.siliconflow.cn/v1',
+    chatCode: 'deepseek-ai/DeepSeek-V3',
+    embedCode: 'BAAI/bge-large-zh-v1.5',
+    rerankCode: 'BAAI/bge-reranker-v2-m3'
+  },
+  {
+    key: 'jina',
+    label: 'Jina（重排/向量）',
+    types: ['2', '3'],
+    baseUrl: 'https://api.jina.ai/v1',
+    chatCode: '',
+    embedCode: 'jina-embeddings-v3',
+    rerankCode: 'jina-reranker-v2-base-multilingual'
+  },
+  {
+    key: 'ollama',
+    label: 'Ollama（本地）',
+    types: ['1', '2'],
+    baseUrl: 'http://localhost:11434',
+    chatCode: 'qwen2.5:7b',
+    embedCode: 'nomic-embed-text',
+    rerankCode: ''
+  },
+  { key: 'custom', label: '自定义', types: ['1', '2', '3'], baseUrl: '', chatCode: '', embedCode: '', rerankCode: '' }
 ];
 const templateKey = ref('deepseek');
+
+/** 当前类型可用的模板（类型切换联动过滤，不支持的模板不出现） */
+const availableTemplates = computed(() => providerTemplates.filter(t => t.types.includes(form.value.modelType)));
+
+/** 按类型取模板建议的模型标识 */
+const templateCode = (t: (typeof providerTemplates)[number]) => {
+  if (form.value.modelType === '2') return t.embedCode;
+  if (form.value.modelType === '3') return t.rerankCode;
+  return t.chatCode;
+};
 
 const initFormData: AiModelForm = {
   modelId: undefined,
@@ -292,16 +346,22 @@ const applyTemplate = (key: string) => {
   const template = providerTemplates.find(t => t.key === key);
   if (!template) return;
   form.value.baseUrl = template.baseUrl;
-  const code = form.value.modelType === '2' ? template.embedCode : template.chatCode;
+  const code = templateCode(template);
   if (code) {
     form.value.modelCode = code;
   }
 };
 
-/** 类型切换：清空不适用字段并按模板建议标识 */
+/** 类型切换：清空不适用字段；当前模板不支持新类型时自动切换到第一个可用模板 */
 const handleTypeChange = () => {
   if (form.value.modelType !== '2') {
     form.value.embedDim = undefined;
+  }
+  const currentSupported = providerTemplates.some(
+    t => t.key === templateKey.value && t.types.includes(form.value.modelType)
+  );
+  if (!currentSupported) {
+    templateKey.value = availableTemplates.value[0]?.key ?? 'custom';
   }
   applyTemplate(templateKey.value);
 };
