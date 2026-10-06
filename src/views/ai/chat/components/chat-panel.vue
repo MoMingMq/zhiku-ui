@@ -8,26 +8,27 @@
       </div>
 
       <!-- 消息流：Element Plus X BubbleList（自动跟随滚动/回底按钮），item 插槽自绘 -->
-      <BubbleList v-else :list="bubbleItems" max-height="100%" :auto-scroll="true" style="height: 100%">
-        <template #item="{ item }">
-          <div v-if="'user' in item.msg" class="msg-row user-row">
-            <div class="msg-bubble user">{{ item.msg.user }}</div>
-          </div>
-          <div v-else class="msg-row assistant-row">
-            <div class="msg-bubble assistant">
+      <BubbleList v-else :list="bubbleItems" :virtual="false" max-height="100%" :auto-scroll="true" style="height: 100%">
+        <template #header="{ item }">
+          <tool-call-item v-for="(tc, i) in assistantOf(item).toolCalls" :key="i" :record="tc" />
+        </template>
+        <template #content="{ item }">
+          <div v-if="'user' in item.msg" class="msg-bubble user">{{ item.msg.user }}</div>
+          <div v-else class="msg-bubble assistant">
               <tool-call-item v-for="(tc, i) in item.msg.assistant.toolCalls" :key="i" :record="tc" />
-              <markdown-renderer v-if="item.msg.assistant.content" :markdown="item.msg.assistant.content" :is-dark="themeDark" />
-              <span v-if="!item.msg.assistant.done && !item.msg.assistant.content" class="typing">
-                <el-icon class="is-loading"><Loading /></el-icon>
-                正在思考…
-              </span>
-              <citation-list
-                v-if="item.msg.assistant.done && item.msg.assistant.citations.length"
-                :citations="item.msg.assistant.citations"
-                @inspect="openChunkContext"
-              />
-            </div>
+            <markdown-renderer v-if="item.msg.assistant.content" :markdown="item.msg.assistant.content" :is-dark="themeDark" />
+            <span v-if="!item.msg.assistant.done && !item.msg.assistant.content" class="typing">
+              <el-icon class="is-loading"><Loading /></el-icon>
+              正在思考…
+            </span>
           </div>
+        </template>
+        <template #footer="{ item }">
+          <citation-list
+            v-if="!('user' in item.msg) && item.msg.assistant.done && item.msg.assistant.citations.length"
+            :citations="item.msg.assistant.citations"
+            @inspect="openChunkContext"
+          />
         </template>
       </BubbleList>
 
@@ -117,6 +118,10 @@ const bubbleItems = computed(() =>
 );
 
 const openChunkContext = (chunkId: number | string) => chunkDialogRef.value?.open(chunkId);
+
+/** header 插槽用：取条目的 assistant 状态（用户条目返回空态） */
+const assistantOf = (item: { msg?: DisplayMessage }): Partial<ChatStreamState> =>
+  item?.msg && !('user' in item.msg) ? item.msg.assistant : { toolCalls: [] };
 
 const onPromptClick = (item: { label?: string }) => {
   if (item.label) {
