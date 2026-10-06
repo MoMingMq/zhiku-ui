@@ -1,4 +1,5 @@
 import type {
+  ChunkEditBody,
   DocumentStat,
   HitTestForm,
   KbChunkVO,
@@ -140,14 +141,49 @@ export function delDocument(documentId: number | string) {
   });
 }
 
-// ==================== 分块 ====================
+// ==================== 分段 ====================
 
-// 切换分块禁用状态（禁用后不参与检索）
+// 切换分段禁用状态（禁用后不参与检索）
 export function changeChunkDisabled(chunkId: number | string, disabled: boolean) {
   return request({
     url: '/ai/kb/document/chunk/' + chunkId + '/disabled',
     method: 'put',
     params: { disabled }
+  });
+}
+
+// 编辑分段（标题/正文；正文变更自动重新向量化）
+export function editChunk(chunkId: number | string, data: ChunkEditBody) {
+  return request({
+    url: '/ai/kb/document/chunk/' + chunkId,
+    method: 'put',
+    data: data
+  });
+}
+
+// 新增分段（追加到文档末尾并向量化）
+export function addChunk(documentId: number | string, data: ChunkEditBody) {
+  return request({
+    url: '/ai/kb/document/' + documentId + '/chunk',
+    method: 'post',
+    data: data
+  });
+}
+
+// 删除分段（同步删除向量）
+export function delChunk(chunkId: number | string) {
+  return request({
+    url: '/ai/kb/document/chunk/' + chunkId,
+    method: 'delete'
+  });
+}
+
+// 分段排序（拖拽后按新顺序重排 seq）
+export function reorderChunks(documentId: number | string, chunkIds: (number | string)[]) {
+  return request({
+    url: '/ai/kb/document/' + documentId + '/chunks/order',
+    method: 'put',
+    data: chunkIds
   });
 }
 
@@ -166,5 +202,9 @@ export default {
   retryDocument,
   reingestDocument,
   delDocument,
-  changeChunkDisabled
+  changeChunkDisabled,
+  editChunk,
+  addChunk,
+  delChunk,
+  reorderChunks
 };

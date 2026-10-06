@@ -51,6 +51,7 @@ export interface KbChunkVO extends BaseEntity {
   documentId: number | string;
   datasetId: number | string;
   seq: number;
+  title: string;
   content: string;
   headingPath: string;
   strategyTag: string;
@@ -73,6 +74,12 @@ export interface HitTestForm {
   query: string;
   topK: number;
   rerank: boolean;
+}
+
+/** 分段编辑/新增请求体 */
+export interface ChunkEditBody {
+  title: string;
+  content: string;
 }
 
 /** 文档状态机（本地映射，后端无字典） */

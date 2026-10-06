@@ -31,17 +31,20 @@
             <div class="kb-card-title">
               <el-icon class="kb-card-icon"><Collection /></el-icon>
               <span class="kb-card-name" :title="row.datasetName">{{ row.datasetName }}</span>
-              <el-dropdown trigger="click" @command="(cmd: string) => handleCardCommand(cmd, row)" @click.stop>
-                <el-icon class="kb-card-more"><MoreFilled /></el-icon>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="edit" v-hasPermi="['ai:kb:edit']">编辑</el-dropdown-item>
-                    <el-dropdown-item command="delete" divided v-hasPermi="['ai:kb:remove']">
-                      <span style="color: var(--el-color-danger)">删除</span>
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
+              <!-- 阻断冒泡：小点与菜单点击不得触发卡片进入详情 -->
+              <span class="kb-card-more-wrap" @click.stop>
+                <el-dropdown trigger="click" @command="(cmd: string) => handleCardCommand(cmd, row)">
+                  <el-icon class="kb-card-more" @click.stop><MoreFilled /></el-icon>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="edit" v-hasPermi="['ai:kb:edit']">编辑</el-dropdown-item>
+                      <el-dropdown-item command="delete" divided v-hasPermi="['ai:kb:remove']">
+                        <span style="color: var(--el-color-danger)">删除</span>
+                      </el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </span>
             </div>
             <div class="kb-card-desc">{{ row.description || '暂无描述' }}</div>
             <div class="kb-card-stat">

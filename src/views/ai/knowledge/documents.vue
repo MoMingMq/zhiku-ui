@@ -69,53 +69,69 @@
       </el-table>
     </el-card>
 
-    <!-- 上传文档对话框（拖拽上传 + 分段规则，对标 业界方案） -->
+    <!-- 上传文档向导（两步：上传文档 → 选择分段机制） -->
     <el-dialog v-model="uploadVisible" title="上传文档" width="640px" append-to-body :close-on-click-modal="false">
-      <el-upload
-        ref="uploadRef"
-        drag
-        multiple
-        :auto-upload="false"
-        :show-file-list="true"
-        accept=".pdf,.docx,.xlsx,.md,.txt,.html"
-        :on-change="handleFileChange"
-        :file-list="fileList"
-      >
-        <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-        <div class="el-upload__text">拖拽文件到此处，或 <em>点击上传</em></div>
-        <template #tip>
-          <div class="el-upload__tip">支持 PDF / DOCX / XLSX / MD / TXT / HTML，单个文件 ≤ 100MB</div>
-        </template>
-      </el-upload>
+      <el-steps :active="uploadStep" align-center finish-status="success" style="margin-bottom: 18px">
+        <el-step title="上传文档" />
+        <el-step title="选择分段机制" />
+      </el-steps>
 
-      <el-divider content-position="left">分段规则</el-divider>
-      <el-radio-group v-model="chunkMode" style="margin-bottom: 12px">
-        <el-radio value="smart">智能分段</el-radio>
-        <el-radio value="advanced">高级分段</el-radio>
-      </el-radio-group>
-      <template v-if="chunkMode === 'smart'">
-        <p class="form-tip" style="margin: 0 0 6px">
-          按文档标题层级逐级下钻切分，表格与代码块完整保留（推荐）。
-        </p>
-        <el-checkbox v-model="semanticEnabled">启用语义断点检测（按句子向量相似度细分主题，更准但更慢）</el-checkbox>
-      </template>
-      <template v-else>
-        <el-form label-width="110px" style="margin-top: 4px">
-          <el-form-item label="分段最大长度">
-            <el-input-number v-model="maxChars" :min="200" :max="2000" :step="50" controls-position="right" />
-            <span class="form-tip" style="margin-left: 8px">字符（默认 700 ≈ 500 token）</span>
-          </el-form-item>
-          <el-form-item label="重叠字符比例">
-            <el-input-number v-model="overlapRatio" :min="0" :max="0.5" :step="0.05" controls-position="right" />
-            <span class="form-tip" style="margin-left: 8px">相邻分段重叠，避免语义被切断</span>
-          </el-form-item>
-        </el-form>
-      </template>
+      <!-- 第一步：选择文件 -->
+      <div v-show="uploadStep === 0">
+        <el-upload
+          ref="uploadRef"
+          drag
+          multiple
+          :auto-upload="false"
+          :show-file-list="true"
+          accept=".pdf,.docx,.xlsx,.md,.txt,.html"
+          :on-change="handleFileChange"
+          :file-list="fileList"
+        >
+          <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+          <div class="el-upload__text">拖拽文件到此处，或 <em>点击上传</em></div>
+          <template #tip>
+            <div class="el-upload__tip">支持 PDF / DOCX / XLSX / MD / TXT / HTML，单个文件 ≤ 100MB</div>
+          </template>
+        </el-upload>
+      </div>
+
+      <!-- 第二步：分段机制 -->
+      <div v-show="uploadStep === 1">
+        <el-radio-group v-model="chunkMode" style="margin-bottom: 12px">
+          <el-radio value="smart">智能分段</el-radio>
+          <el-radio value="advanced">高级分段</el-radio>
+        </el-radio-group>
+        <template v-if="chunkMode === 'smart'">
+          <p class="form-tip" style="margin: 0 0 6px">
+            按文档标题层级逐级下钻切分，表格与代码块完整保留（推荐）。
+          </p>
+          <el-checkbox v-model="semanticEnabled">启用语义断点检测（按句子向量相似度细分主题，更准但更慢）</el-checkbox>
+        </template>
+        <template v-else>
+          <el-form label-width="110px" style="margin-top: 4px">
+            <el-form-item label="分段最大长度">
+              <el-input-number v-model="maxChars" :min="200" :max="2000" :step="50" controls-position="right" />
+              <span class="form-tip" style="margin-left: 8px">字符（默认 700 ≈ 500 token）</span>
+            </el-form-item>
+            <el-form-item label="重叠字符比例">
+              <el-input-number v-model="overlapRatio" :min="0" :max="0.5" :step="0.05" controls-position="right" />
+              <span class="form-tip" style="margin-left: 8px">相邻分段重叠，避免语义被切断</span>
+            </el-form-item>
+          </el-form>
+        </template>
+      </div>
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" :loading="uploading" @click="submitUpload">开始上传（{{ fileList.length }} 个文件）</el-button>
-          <el-button @click="uploadVisible = false">取 消</el-button>
+          <el-button v-if="uploadStep === 0" @click="uploadVisible = false">取 消</el-button>
+          <el-button v-if="uploadStep === 0" type="primary" :disabled="fileList.length === 0" @click="uploadStep = 1">
+            下一步
+          </el-button>
+          <el-button v-if="uploadStep === 1" @click="uploadStep = 0">上一步</el-button>
+          <el-button v-if="uploadStep === 1" type="primary" :loading="uploading" @click="submitUpload">
+            开始上传（{{ fileList.length }} 个文件）
+          </el-button>
         </div>
       </template>
     </el-dialog>
@@ -175,6 +191,7 @@ const documentList = ref<KbDocumentVO[]>([]);
 const docLoading = ref(false);
 
 const uploadVisible = ref(false);
+const uploadStep = ref(0);
 const uploading = ref(false);
 const fileList = ref<UploadUserFile[]>([]);
 const chunkMode = ref<'smart' | 'advanced'>('smart');
@@ -245,6 +262,7 @@ const openUpload = () => {
   semanticEnabled.value = params.mode === 'structure_semantic';
   maxChars.value = params.maxChars ?? 700;
   overlapRatio.value = params.overlapRatio ?? 0.15;
+  uploadStep.value = 0;
   uploadVisible.value = true;
 };
 
@@ -288,6 +306,7 @@ const submitUpload = async () => {
     }
     modal.msgSuccess(`已上传 ${fileList.value.length} 个文档，解析入库已开始`);
     uploadVisible.value = false;
+    uploadStep.value = 0;
     await loadDocuments();
   } finally {
     uploading.value = false;
