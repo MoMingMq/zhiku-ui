@@ -7,15 +7,34 @@
         <Prompts v-if="suggestedList.length" class="chat-prompts" :items="promptItems" @item-click="onPromptClick" />
       </div>
 
-      <!-- 消息流：Element Plus X BubbleList（自动跟随滚动/回底按钮），item 插槽自绘 -->
-      <BubbleList v-else :list="bubbleItems" :virtual="false" max-height="100%" :auto-scroll="true" style="height: 100%">
+      <!-- 消息流：BubbleList 滚动分页（滚到顶部加载更早消息） -->
+      <BubbleList
+        v-else
+        :list="bubbleItems"
+        :virtual="false"
+        max-height="100%"
+        :auto-scroll="true"
+        :load-more-top-threshold="60"
+        :top-status="topLoadStatus"
+        @load-more-top="emit('load-more-top')"
+        style="height: 100%"
+      >
+        <template #avatar="{ item }">
+          <el-avatar v-if="'user' in item.msg" :size="34" style="background: var(--el-color-primary); flex-shrink: 0">我</el-avatar>
+          <el-avatar v-else :size="34" style="background: var(--el-color-success); flex-shrink: 0">
+            <el-icon><MagicStick /></el-icon>
+          </el-avatar>
+        </template>
         <template #header="{ item }">
-          <tool-call-item v-for="(tc, i) in assistantOf(item).toolCalls" :key="i" :record="tc" />
+          <tool-call-item
+            v-for="(tc, i) in dedupeToolCalls(assistantOf(item).toolCalls)"
+            :key="i"
+            :record="tc"
+          />
         </template>
         <template #content="{ item }">
           <div v-if="'user' in item.msg" class="msg-bubble user">{{ item.msg.user }}</div>
           <div v-else class="msg-bubble assistant">
-              <tool-call-item v-for="(tc, i) in item.msg.assistant.toolCalls" :key="i" :record="tc" />
             <markdown-renderer v-if="item.msg.assistant.content" :markdown="item.msg.assistant.content" :is-dark="themeDark" />
             <span v-if="!item.msg.assistant.done && !item.msg.assistant.content" class="typing">
               <el-icon class="is-loading"><Loading /></el-icon>
@@ -24,11 +43,21 @@
           </div>
         </template>
         <template #footer="{ item }">
-          <citation-list
+          <!-- 引用来源：横条按钮，点击开右侧抽屉（统一查看全部引用） -->
+          <button
             v-if="!('user' in item.msg) && item.msg.assistant.done && item.msg.assistant.citations.length"
-            :citations="item.msg.assistant.citations"
-            @inspect="openChunkContext"
-          />
+            class="citation-bar"
+            @click="openCitations(item.msg.assistant.citations)"
+          >
+            <el-icon><Collection /></el-icon>
+            <span>引用来源</span>
+            <span class="citation-bar-count">{{ item.msg.assistant.citations.length }}</span>
+            <span
+              v-for="(c, i) in dedupeCitations(item.msg.assistant.citations).slice(0, 3)"
+              :key="c.chunkId"
+              class="citation-bar-doc"
+            >{{ c.documentName }}</span>
+          </button>
         </template>
       </BubbleList>
 
@@ -50,19 +79,58 @@
       />
     </div>
 
-    <chunk-context-dialog ref="chunkDialogRef" />
+    <!-- 引用来源抽屉：一次展示本回答全部引用，点文档切换预览 -->
+    <el-drawer v-model="citationDrawer.visible" title="引用来源" size="62%" append-to-body>
+      <div class="citation-drawer">
+        <aside class="cd-list">
+          <div
+            v-for="(c, i) in citationDrawer.citations"
+            :key="c.chunkId"
+            class="cd-item"
+            :class="{ 'is-active': c.chunkId === citationDrawer.activeId }"
+            @click="selectCitation(c)"
+          >
+            <span class="cd-item-idx">[{{ i + 1 }}]</span>
+            <div class="cd-item-body">
+              <div class="cd-item-doc">{{ c.documentName }}</div>
+              <div class="cd-item-path">{{ c.headingPath || '（无标题路径）' }}</div>
+            </div>
+            <span class="cd-item-score">{{ (c.score * 100).toFixed(0) }}%</span>
+          </div>
+        </aside>
+        <section v-loading="citationDrawer.loading" class="cd-preview">
+          <template v-if="citationDrawer.preview">
+            <div class="cd-preview-meta">
+              <el-tag size="small" effect="plain">{{ citationDrawer.preview.headingPath || '（无标题路径）' }}</el-tag>
+              <el-tag size="small" type="info" effect="plain">#{{ citationDrawer.preview.seq }}</el-tag>
+            </div>
+            <div v-if="citationDrawer.preview.prevContent" class="cd-block">
+              <div class="cd-block-label">上一分块</div>
+              <MarkdownRenderer :markdown="citationDrawer.preview.prevContent" :is-dark="themeDark" />
+            </div>
+            <div class="cd-block cd-block-current">
+              <div class="cd-block-label cd-block-label-current">命中的分块</div>
+              <MarkdownRenderer :markdown="citationDrawer.preview.content" :is-dark="themeDark" />
+            </div>
+            <div v-if="citationDrawer.preview.nextContent" class="cd-block">
+              <div class="cd-block-label">下一分块</div>
+              <MarkdownRenderer :markdown="citationDrawer.preview.nextContent" :is-dark="themeDark" />
+            </div>
+          </template>
+          <el-empty v-else-if="!citationDrawer.loading" description="选择左侧引用查看原文" :image-size="60" />
+        </section>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
 <script setup lang="ts">
 import request from '@/utils/request';
-import { chatSSE } from '@/api/ai/app';
-import type { ChatStreamState } from '@/api/ai/app/types';
+import { chatSSE, getChunkContext } from '@/api/ai/app';
+import type { ChatStreamState, CitationVO } from '@/api/ai/app/types';
 import { initialChatStreamState } from '@/api/ai/app/types';
 import { useThemeDark } from '@/hooks/common/useTheme';
 import { chatStreamReducer, historyToStreamState } from './chat-stream';
-import CitationList from './citation-list.vue';
-import ChunkContextDialog from './chunk-context-dialog.vue';
 import ToolCallItem from './tool-call-item.vue';
 import { BubbleList, Prompts, Welcome, XSender } from 'vue-element-plus-x';
 import 'vue-element-plus-x/es/Bubble/index.css';
@@ -82,12 +150,17 @@ const props = defineProps<{
   prologue?: string;
   appName?: string;
   suggestedQuestions?: string[];
+  /** 会话消息总数（供父层滚动分页判断） */
+  messageTotal?: number;
 }>();
 
-const emit = defineEmits<{ done: [conversationId: number | string] }>();
+const emit = defineEmits<{
+  done: [conversationId: number | string];
+  /** 滚动到顶部加载更早消息（父层实现分页取数后调 prependHistory） */
+  'load-more-top': [];
+}>();
 
 const { themeDark } = useThemeDark();
-const chunkDialogRef = ref<InstanceType<typeof ChunkContextDialog>>();
 const senderRef = ref<InstanceType<typeof XSender>>();
 const streaming = ref(false);
 const streamError = ref('');
@@ -112,16 +185,66 @@ let abortController: AbortController | null = null;
 const isPublic = computed(() => !!props.shareCode);
 const chatUrl = () => (isPublic.value ? `/public/app/${props.shareCode}/chat` : `/ai/app/${props.appId}/chat`);
 
-/** BubbleList 数据源（msg 透传给 item 插槽） */
+/** BubbleList 数据源（msg 透传给插槽） */
 const bubbleItems = computed(() =>
   messages.value.map((m, i) => ({ id: i, placement: 'user' in m ? 'end' : 'start', msg: m }))
 );
 
-const openChunkContext = (chunkId: number | string) => chunkDialogRef.value?.open(chunkId);
-
 /** header 插槽用：取条目的 assistant 状态（用户条目返回空态） */
 const assistantOf = (item: { msg?: DisplayMessage }): Partial<ChatStreamState> =>
-  item?.msg && !('user' in item.msg) ? item.msg.assistant : { toolCalls: [] };
+  item?.msg && !('user' in item.msg) ? item.msg.assistant : ({ toolCalls: [] } as Partial<ChatStreamState>);
+
+/** 工具调用去重（同名同参多次分片上报时只展示一次执行） */
+const dedupeToolCalls = (calls: Array<{ name: string; args: string; result: string; success: boolean | null }>) => {
+  const seen = new Set<string>();
+  return calls.filter(c => {
+    const key = `${c.name}|${c.args}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+/** 引用去重（同分块只留一条） */
+const dedupeCitations = (citations: CitationVO[]) => {
+  const seen = new Set<number | string>();
+  return citations.filter(c => {
+    if (seen.has(c.chunkId)) return false;
+    seen.add(c.chunkId);
+    return true;
+  });
+};
+
+// ===== 引用来源抽屉 =====
+const citationDrawer = reactive({
+  visible: false,
+  loading: false,
+  citations: [] as CitationVO[],
+  activeId: null as number | string | null,
+  preview: null as { headingPath: string | null; seq: number; prevContent: string | null; content: string | null; nextContent: string | null } | null
+});
+
+const openCitations = (citations: CitationVO[]) => {
+  citationDrawer.citations = dedupeCitations(citations);
+  citationDrawer.visible = true;
+  if (citationDrawer.citations.length) {
+    selectCitation(citationDrawer.citations[0]);
+  }
+};
+
+const selectCitation = async (c: CitationVO) => {
+  citationDrawer.activeId = c.chunkId;
+  citationDrawer.loading = true;
+  try {
+    const url = isPublic.value
+      ? `/public/app/${props.shareCode}/chunk-context/${c.chunkId}`
+      : `/ai/app/chunk/${c.chunkId}/context`;
+    const res = await request<unknown, { code: number; data: typeof citationDrawer.preview }>({ url, method: 'get' });
+    citationDrawer.preview = res.data;
+  } finally {
+    citationDrawer.loading = false;
+  }
+};
 
 const onPromptClick = (item: { label?: string }) => {
   if (item.label) {
@@ -129,7 +252,6 @@ const onPromptClick = (item: { label?: string }) => {
   }
 };
 
-/** XSender 提交：getModelValue 取纯文本（富文本取 .text），发送后 onClear 清空编辑器 */
 const handleSenderSubmit = () => {
   if (streaming.value) return;
   const model = senderRef.value?.getModelValue();
@@ -208,6 +330,12 @@ const loadHistory = async (conversationId: number | string) => {
   localConversationId.value = conversationId;
 };
 
+/** 滚动分页：把更早的消息插到头部（父层按页取数后调用） */
+const prependHistory = (earlier: Parameters<typeof historyToStreamState>[0]) => {
+  const converted = historyToStreamState(earlier);
+  messages.value = [...converted, ...messages.value];
+};
+
 /** 重置为新会话（回开场白） */
 const reset = () => {
   messages.value = [];
@@ -218,6 +346,7 @@ const reset = () => {
 defineExpose({
   reset,
   loadHistory,
+  prependHistory,
   setConversation: (id: number | string | null) => (localConversationId.value = id)
 });
 </script>
@@ -249,7 +378,6 @@ defineExpose({
       width: 100%;
       max-width: 600px;
 
-      /* EPX Prompts 主题化：卡片式推荐问题，贴合 Element 主题变量 */
       :deep(.elx-prompts) {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -287,37 +415,40 @@ defineExpose({
     }
   }
 
-  .msg-row {
-    display: flex;
-    padding: 6px 16px;
+  /* 消息行：头像 + 间距（市面布局：角色头像在侧，内容留白呼吸） */
+  :deep(.elx-bubble-list__list) {
+    padding: 20px 24px;
+  }
 
-    &.user-row {
-      justify-content: flex-end;
+  :deep(.elx-bubble) {
+    --elx-bubble-content-max-width: min(72%, 680px) !important;
+    margin-bottom: 18px;
 
-      .msg-bubble.user {
-        max-width: 78%;
-        background: var(--el-color-primary);
-        color: #fff;
-        border-radius: 12px 12px 2px 12px;
-        padding: 9px 13px;
-        font-size: 14px;
-        line-height: 1.6;
-        word-break: break-word;
-        white-space: pre-wrap;
-      }
+    &.elx-bubble--end .elx-bubble__content {
+      border-radius: 14px 14px 4px 14px;
     }
 
-    &.assistant-row {
-      justify-content: flex-start;
+    &.elx-bubble--start .elx-bubble__content {
+      border-radius: 4px 14px 14px 14px;
+    }
+  }
 
-      .msg-bubble.assistant {
-        max-width: 92%;
-        background: var(--el-fill-color-light);
-        border-radius: 12px 12px 12px 2px;
-        padding: 10px 14px;
-        font-size: 14px;
-        line-height: 1.7;
-        word-break: break-word;
+  .msg-bubble {
+    font-size: 14px;
+    line-height: 1.75;
+    word-break: break-word;
+
+    &.user {
+      color: #fff;
+      white-space: pre-wrap;
+    }
+
+    &.assistant {
+      /* MD 渲染器适配主题：透传底色（x-md-renderer 自带内联底色需覆盖） */
+      :deep(.x-md-renderer) {
+        background: transparent !important;
+        padding: 0 !important;
+        color: inherit !important;
       }
     }
   }
@@ -334,15 +465,174 @@ defineExpose({
     margin: 0 16px 8px;
   }
 
-  .chat-input {
-    display: flex;
-    gap: 10px;
-    align-items: flex-end;
-    padding: 12px 16px;
-    border-top: 1px solid var(--el-border-color-lighter);
+  /* 引用来源横条（市面形态：一行汇总，点开抽屉看全部） */
+  .citation-bar {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 7px 12px;
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 8px;
+    background: var(--el-bg-color);
+    font-size: 12px;
+    color: var(--el-text-color-regular);
+    cursor: pointer;
+    transition: all 0.2s;
+    max-width: 100%;
 
-    .el-input {
+    .citation-bar-count {
+      min-width: 18px;
+      height: 18px;
+      line-height: 18px;
+      text-align: center;
+      border-radius: 9px;
+      background: var(--el-color-primary);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .citation-bar-doc {
+      padding: 1px 8px;
+      border-radius: 4px;
+      background: var(--el-fill-color-light);
+      color: var(--el-text-color-secondary);
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+
+      & + .citation-bar-doc {
+        margin-left: -4px;
+      }
+    }
+
+    &:hover {
+      border-color: var(--el-color-primary-light-5);
+      color: var(--el-color-primary);
+
+      .citation-bar-doc {
+        color: var(--el-color-primary);
+      }
+    }
+  }
+
+  .chat-input {
+    padding: 12px 24px 16px;
+
+    .chat-sender {
+      width: 100%;
+    }
+  }
+
+  /* 引用抽屉：左列表 + 右预览（MD 渲染对齐知识库分块） */
+  .citation-drawer {
+    display: flex;
+    height: 100%;
+    gap: 14px;
+
+    .cd-list {
+      width: 240px;
+      flex-shrink: 0;
+      overflow-y: auto;
+      border-right: 1px solid var(--el-border-color-lighter);
+      padding-right: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+
+      .cd-item {
+        display: flex;
+        gap: 8px;
+        padding: 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: all 0.2s;
+
+        .cd-item-idx {
+          color: var(--el-color-primary);
+          font-weight: 700;
+          font-size: 13px;
+        }
+
+        .cd-item-body {
+          flex: 1;
+          min-width: 0;
+
+          .cd-item-doc {
+            font-size: 13px;
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          .cd-item-path {
+            font-size: 12px;
+            color: var(--el-text-color-secondary);
+            margin-top: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+        }
+
+        .cd-item-score {
+          font-size: 12px;
+          color: var(--el-text-color-secondary);
+        }
+
+        &:hover {
+          background: var(--el-fill-color-light);
+        }
+
+        &.is-active {
+          border-color: var(--el-color-primary-light-5);
+          background: var(--el-color-primary-light-9);
+        }
+      }
+    }
+
+    .cd-preview {
       flex: 1;
+      min-width: 0;
+      overflow-y: auto;
+
+      .cd-preview-meta {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .cd-block {
+        margin-bottom: 16px;
+
+        .cd-block-label {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--el-text-color-secondary);
+          margin-bottom: 6px;
+        }
+
+        .cd-block-label-current {
+          color: var(--el-color-primary);
+        }
+
+        &.cd-block-current {
+          padding: 12px;
+          border-radius: 8px;
+          background: var(--el-color-primary-light-9);
+          border: 1px solid var(--el-color-primary-light-7);
+        }
+
+        /* 相邻分块的 MD 渲染同主题 */
+        :deep(.x-md-renderer) {
+          background: transparent !important;
+          padding: 0 !important;
+          color: inherit !important;
+        }
+      }
     }
   }
 }

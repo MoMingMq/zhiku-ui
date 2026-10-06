@@ -17,6 +17,9 @@
             :items="conversationItems"
             :items-style="{ backgroundColor: 'transparent' }"
             :menu="conversationMenu"
+            :show-built-in-menu="true"
+            show-built-in-menu-type="hover"
+            menu-placement="bottom-end"
             @change="onConversationChange"
             @menu-command="onConversationMenu"
           />
@@ -33,6 +36,7 @@
             :app-name="selectedApp?.appName"
             :suggested-questions="selectedAppSuggested"
             @done="onChatDone"
+            @load-more-top="loadEarlierMessages"
           />
           <el-empty v-else description="选择一个应用开始对话" />
         </main>
@@ -138,6 +142,11 @@ const newConversation = () => {
 const onChatDone = () => {
   refreshConversations();
   setTimeout(refreshConversations, 2000);
+};
+
+/** 滚动到顶部加载更早消息（当前接口为全量返回，事件桥接预留分页） */
+const loadEarlierMessages = () => {
+  /* 后端消息接口现为全量返回，无需分页；接口改分页时在此取前一页并 panelRef.prependHistory(...) */
 };
 
 const renameConversation = async (c: AiConversationVO) => {
