@@ -280,6 +280,13 @@ onMounted(() => {
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 14px;
   min-height: 200px;
+
+  /* 空态占满整行并在网格内水平垂直居中（同工具页） */
+  .el-empty {
+    grid-column: 1 / -1;
+    place-self: center;
+    padding: 48px 0;
+  }
 }
 
 .kb-card {

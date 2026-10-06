@@ -219,6 +219,11 @@ onMounted(loadDatasets);
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
 
+  .el-empty {
+    grid-column: 1 / -1;
+    place-self: center;
+  }
+
   .kb-select-card {
     padding: 14px;
     border: 1px solid var(--el-border-color-lighter);
