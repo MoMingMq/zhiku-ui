@@ -1,7 +1,11 @@
 <template>
   <div class="kb-config">
-    <!-- 触发按钮 + 已选卡片 + 检索参数摘要 -->
-    <el-button icon="FolderChecked" @click="open">知识库与检索设置</el-button>
+    <!-- 双按钮：选择 / 参数设置 -->
+    <div class="kb-actions">
+      <el-button icon="FolderChecked" @click="selectDialog.visible = true">选择</el-button>
+      <el-button icon="Operation" @click="paramDialog.visible = true">参数设置</el-button>
+    </div>
+    <!-- 已选知识库卡片 -->
     <div v-if="config.kbIds.length" class="kb-cards">
       <div v-for="kb in selectedKbs" :key="kb.datasetId" class="kb-card">
         <div class="kb-card-name" :title="kb.datasetName">{{ kb.datasetName }}</div>
@@ -10,39 +14,55 @@
         </el-tooltip>
       </div>
     </div>
-    <div class="retrieval-summary">
-      检索条数 Top {{ config.topK }} · 相似度阈值 {{ config.minScore }}%
-    </div>
 
-    <!-- 关联与检索参数对话框 -->
-    <el-dialog v-model="visible" title="知识库与检索设置" width="580px" append-to-body>
-      <div v-loading="loading" class="kb-list">
-        <div class="section-label">关联知识库（检索范围 = 并集）</div>
-        <el-checkbox-group v-model="draft.kbIds">
-          <div v-for="kb in datasetOptions" :key="kb.datasetId" class="kb-option">
-            <el-checkbox :value="kb.datasetId">
-              <span class="kb-option-name">{{ kb.datasetName }}</span>
-              <span class="kb-option-desc">{{ kb.description || '暂无描述' }}</span>
-            </el-checkbox>
+    <!-- 选择：知识库卡片列表（带分页，形态对齐知识库列表页） -->
+    <el-dialog v-model="selectDialog.visible" title="选择知识库" width="720px" append-to-body>
+      <div v-loading="selectDialog.loading" class="kb-grid">
+        <div
+          v-for="kb in datasetOptions"
+          :key="kb.datasetId"
+          class="kb-grid-card"
+          :class="{ 'is-checked': checkedIds.includes(kb.datasetId) }"
+          @click="toggleCheck(kb.datasetId)"
+        >
+          <div class="kb-grid-title">
+            <el-icon class="kb-grid-icon"><Collection /></el-icon>
+            <span class="kb-grid-name" :title="kb.datasetName">{{ kb.datasetName }}</span>
+            <el-icon v-if="checkedIds.includes(kb.datasetId)" class="kb-grid-check"><CircleCheckFilled /></el-icon>
           </div>
-        </el-checkbox-group>
-        <el-empty v-if="!loading && datasetOptions.length === 0" description="暂无知识库，请先创建" :image-size="60" />
+          <div class="kb-grid-desc">{{ kb.description || '暂无描述' }}</div>
+        </div>
+        <el-empty v-if="!selectDialog.loading && datasetOptions.length === 0" description="暂无知识库" :image-size="60" />
       </div>
-      <el-divider />
-      <el-form label-width="100px" class="retrieval-form">
-        <div class="section-label">检索参数</div>
+      <pagination
+        v-show="total > 0"
+        v-model:page="queryParams.pageNum"
+        v-model:limit="queryParams.pageSize"
+        :total="total"
+        layout="total, prev, pager, next"
+        @pagination="loadDatasets"
+      />
+      <template #footer>
+        <el-button type="primary" @click="confirmSelect">确 定（已选 {{ checkedIds.length }}）</el-button>
+        <el-button @click="selectDialog.visible = false">取 消</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 参数设置：检索条数 / 相似度阈值 -->
+    <el-dialog v-model="paramDialog.visible" title="检索参数设置" width="480px" append-to-body>
+      <el-form label-width="100px">
         <el-form-item label="检索条数">
-          <el-input-number v-model="draft.topK" :min="1" :max="20" />
+          <el-input-number v-model="paramDraft.topK" :min="1" :max="20" />
           <span class="form-tip">多库召回并集后的 Top N</span>
         </el-form-item>
         <el-form-item label="相似度阈值">
-          <el-input-number v-model="draft.minScore" :min="0" :max="100" :step="5" />
-          <span class="form-tip">低于该分数的命中被过滤（百分比，0=不过滤；Dify 惯例 50-70）</span>
+          <el-input-number v-model="paramDraft.minScore" :min="0" :max="100" :step="5" />
+          <span class="form-tip">低于该分数的命中被过滤（百分比，0=不过滤）</span>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button type="primary" @click="confirm">确 定</el-button>
-        <el-button @click="visible = false">取 消</el-button>
+        <el-button type="primary" @click="confirmParams">确 定</el-button>
+        <el-button @click="paramDialog.visible = false">取 消</el-button>
       </template>
     </el-dialog>
   </div>
@@ -61,61 +81,91 @@ export interface KbRetrievalConfig {
 const props = defineProps<{ modelValue: KbRetrievalConfig }>();
 const emit = defineEmits<{ 'update:modelValue': [value: KbRetrievalConfig] }>();
 
-const visible = ref(false);
-const loading = ref(false);
+const selectDialog = reactive({ visible: false, loading: false });
+const paramDialog = reactive({ visible: false });
 const datasetOptions = ref<Array<{ datasetId: number | string; datasetName: string; description?: string }>>([]);
-const draft = reactive<KbRetrievalConfig>({ kbIds: [], topK: 5, minScore: 50 });
+const allDatasetMap = ref<Map<number | string, { datasetName: string }>>(new Map());
+const checkedIds = ref<Array<number | string>>([]);
+const paramDraft = reactive({ topK: 5, minScore: 50 });
+const total = ref(0);
+const queryParams = reactive({ pageNum: 1, pageSize: 12 });
 
 const config = computed(() => props.modelValue);
 
-const selectedKbs = computed(() => datasetOptions.value.filter(kb => props.modelValue.kbIds.includes(kb.datasetId)));
+/** 已选卡片展示：翻页后不在当前页的库也要显示，维护全量名称映射 */
+const selectedKbs = computed(() =>
+  props.modelValue.kbIds.map(id => ({
+    datasetId: id,
+    datasetName: allDatasetMap.value.get(id)?.datasetName ?? `知识库 ${id}`
+  }))
+);
 
-const open = async () => {
-  draft.kbIds = [...props.modelValue.kbIds];
-  draft.topK = props.modelValue.topK;
-  draft.minScore = props.modelValue.minScore;
-  visible.value = true;
-  if (!datasetOptions.value.length) {
-    loading.value = true;
-    try {
-      const res = await listDataset({ pageNum: 1, pageSize: 100 });
-      datasetOptions.value = res.data?.rows ?? [];
-    } finally {
-      loading.value = false;
+const loadDatasets = async () => {
+  selectDialog.loading = true;
+  try {
+    const res = await listDataset({ pageNum: queryParams.pageNum, pageSize: queryParams.pageSize });
+    datasetOptions.value = res.data?.rows ?? [];
+    total.value = res.data?.total ?? 0;
+    datasetOptions.value.forEach(kb => allDatasetMap.value.set(kb.datasetId, kb));
+    // 已选但不在映射里的（历史关联）：再补拉一次全量补齐名称
+    if (allDatasetMap.value.size < total.value) {
+      const all = await listDataset({ pageNum: 1, pageSize: 100 });
+      (all.data?.rows ?? []).forEach(kb => allDatasetMap.value.set(kb.datasetId, kb));
     }
+  } finally {
+    selectDialog.loading = false;
   }
 };
 
-const confirm = () => {
-  emit('update:modelValue', { kbIds: [...draft.kbIds], topK: draft.topK, minScore: draft.minScore });
-  visible.value = false;
+watch(selectDialog, async s => {
+  if (s.visible) {
+    checkedIds.value = [...props.modelValue.kbIds];
+    if (!allDatasetMap.value.size || allDatasetMap.value.size < props.modelValue.kbIds.length) {
+      await loadDatasets();
+    }
+  }
+});
+
+watch(paramDialog, s => {
+  if (s.visible) {
+    paramDraft.topK = props.modelValue.topK;
+    paramDraft.minScore = props.modelValue.minScore;
+  }
+});
+
+const toggleCheck = (datasetId: number | string) => {
+  const idx = checkedIds.value.indexOf(datasetId);
+  if (idx >= 0) {
+    checkedIds.value.splice(idx, 1);
+  } else {
+    checkedIds.value.push(datasetId);
+  }
+};
+
+const confirmSelect = () => {
+  emit('update:modelValue', { ...props.modelValue, kbIds: [...checkedIds.value] });
+  selectDialog.visible = false;
+};
+
+const confirmParams = () => {
+  emit('update:modelValue', { ...props.modelValue, topK: paramDraft.topK, minScore: paramDraft.minScore });
+  paramDialog.visible = false;
 };
 
 const unbind = (datasetId: number | string) => {
   emit('update:modelValue', { ...props.modelValue, kbIds: props.modelValue.kbIds.filter(id => id !== datasetId) });
 };
 
-onMounted(async () => {
-  const res = await listDataset({ pageNum: 1, pageSize: 100 });
-  datasetOptions.value = res.data?.rows ?? [];
-});
+onMounted(loadDatasets);
 </script>
 
 <style lang="scss" scoped>
 .kb-config {
   width: 100%;
 
-  .retrieval-summary {
-    margin-top: 8px;
-    font-size: 12px;
-    color: var(--el-text-color-secondary);
-  }
-
-  .section-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--el-text-color-regular);
-    margin-bottom: 8px;
+  .kb-actions {
+    display: flex;
+    gap: 8px;
   }
 
   .form-tip {
@@ -160,23 +210,64 @@ onMounted(async () => {
     }
   }
 
-  .kb-list {
-    min-height: 120px;
-    max-height: 300px;
-    overflow-y: auto;
+  .kb-grid {
+    min-height: 160px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
 
-    .kb-option {
-      padding: 6px 4px;
-      border-bottom: 1px dashed var(--el-border-color-extra-light);
+    .kb-grid-card {
+      padding: 12px;
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
 
-      .kb-option-name {
-        font-weight: 600;
-        margin-right: 8px;
+      &:hover {
+        border-color: var(--el-color-primary-light-5);
       }
 
-      .kb-option-desc {
+      &.is-checked {
+        border-color: var(--el-color-primary);
+        background: var(--el-color-primary-light-9);
+      }
+
+      .kb-grid-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .kb-grid-icon {
+          color: var(--el-color-primary);
+        }
+
+        .kb-grid-name {
+          flex: 1;
+          min-width: 0;
+          font-size: 13px;
+          font-weight: 600;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .kb-grid-check {
+          color: var(--el-color-primary);
+        }
+      }
+
+      .kb-grid-desc {
+        min-height: 34px;
         font-size: 12px;
         color: var(--el-text-color-secondary);
+        line-height: 1.5;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
       }
     }
   }

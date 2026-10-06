@@ -10,23 +10,14 @@
           <div class="conv-actions">
             <el-button size="small" type="primary" plain icon="Plus" :disabled="!selectedAppId" @click="newConversation">新对话</el-button>
           </div>
-          <div class="conv-list">
-            <div
-              v-for="c in conversations"
-              :key="c.conversationId"
-              class="conv-item"
-              :class="{ 'is-active': c.conversationId === activeConversationId }"
-              @click="openConversation(c.conversationId)"
-            >
-              <el-icon class="conv-icon"><ChatLineRound /></el-icon>
-              <span class="conv-title">{{ c.title || '新对话' }}</span>
-              <span class="conv-ops" @click.stop>
-                <el-icon @click="renameConversation(c)"><Edit /></el-icon>
-                <el-icon @click="deleteConversation(c)"><Delete /></el-icon>
-              </span>
-            </div>
-            <el-empty v-if="!conversations.length" description="暂无会话" :image-size="50" />
-          </div>
+          <!-- Element Plus X Conversations 会话列表（内置激活态/菜单） -->
+          <Conversations
+            v-model:active="activeKey"
+            class="conv-list"
+            :items="conversationItems"
+            @change="onConversationChange"
+            @menu-command="onConversationMenu"
+          />
         </aside>
 
         <!-- 右：对话面板 -->
@@ -38,6 +29,7 @@
             :app-id="selectedAppId"
             :conversation-id="activeConversationId"
             :prologue="selectedApp?.prologue ?? ''"
+            :app-name="selectedApp?.appName"
             :suggested-questions="selectedAppSuggested"
             @done="refreshConversations"
           />
@@ -52,6 +44,8 @@
 import api from '@/api/ai/app';
 import type { AiAppVO, AiConversationVO } from '@/api/ai/app/types';
 import modal from '@/plugins/modal';
+import { Conversations } from 'vue-element-plus-x';
+import 'vue-element-plus-x/es/Conversations/index.css';
 
 const route = useRoute();
 const appOptions = ref<AiAppVO[]>([]);
@@ -61,6 +55,33 @@ const activeConversationId = ref<number | string | null>(null);
 const panelRef = ref<InstanceType<import('./components/chat-panel.vue').default>>();
 
 const selectedApp = computed(() => appOptions.value.find(a => a.appId === selectedAppId.value));
+
+/** Conversations 数据源与激活键 */
+const activeKey = ref<string | number>();
+const conversationItems = computed(() =>
+  conversations.value.map(c => ({
+    key: String(c.conversationId),
+    label: c.title || '新对话'
+  }))
+);
+
+const onConversationChange = (item: { key?: string | number }) => {
+  if (item.key) {
+    openConversation(item.key);
+  }
+};
+
+const onConversationMenu = (command: { command?: string; key?: string | number }, item?: { key?: string | number }) => {
+  const convId = item?.key;
+  if (!convId) return;
+  const c = conversations.value.find(x => String(x.conversationId) === String(convId));
+  if (!c) return;
+  if (String(command) === 'rename') {
+    renameConversation(c);
+  } else if (String(command) === 'delete') {
+    deleteConversation(c);
+  }
+};
 const selectedAppSuggested = computed(() => {
   try {
     return JSON.parse(selectedApp.value?.suggestedQuestions ?? '[]') as string[];

@@ -50,7 +50,6 @@
           <el-col :span="12">
             <el-form-item v-if="paramDefs.length" label="参数配置">
               <el-button icon="Operation" @click="paramsDialog.visible = true">模型参数配置</el-button>
-              <span class="form-tip">{{ paramDefs.length }} 项参数（{{ paramDefs.map(p => p.label).join('、') }}）</span>
             </el-form-item>
           </el-col>
         </el-row>
@@ -125,7 +124,13 @@
     <!-- 右：调试对话面板 -->
     <div class="settings-debug">
       <div class="debug-title">调试对话（保存后生效）</div>
-      <chat-panel ref="debugPanelRef" :app-id="app.appId" :prologue="form.prologue ?? ''" :suggested-questions="liveSuggested" />
+      <chat-panel
+            ref="debugPanelRef"
+            :app-id="app.appId"
+            :app-name="app.appName"
+            :prologue="form.prologue ?? ''"
+            :suggested-questions="liveSuggested"
+          />
     </div>
   </div>
 </template>
@@ -254,7 +259,7 @@ const load = async () => {
     chatType: props.app.chatType ?? 'knowledge_qa',
     modelId: props.app.modelId,
     systemPrompt: props.app.systemPrompt ?? undefined,
-    prologue: props.app.prologue ?? undefined,
+    prologue: props.app.prologue ?? `你好，我是${props.app.appName}，很高兴为你服务！`,
     status: props.app.status
   });
   try {

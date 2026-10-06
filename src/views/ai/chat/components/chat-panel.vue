@@ -1,44 +1,38 @@
 <template>
   <div class="chat-panel">
     <div ref="listRef" class="chat-list">
-      <!-- 开场白与推荐问题（无历史时） -->
-      <template v-if="messages.length === 0 && !streaming">
-        <div v-if="appInfo.prologue" class="chat-prologue">
-          <div class="prologue-text">{{ appInfo.prologue }}</div>
-        </div>
-        <div v-if="suggestedList.length" class="chat-suggestions">
-          <el-button v-for="q in suggestedList" :key="q" size="small" round @click="sendMessage(q)">{{ q }}</el-button>
-        </div>
-      </template>
+      <!-- 空态：Welcome + Prompts 居中（实时联动配置） -->
+      <div v-if="messages.length === 0 && !streaming" class="chat-welcome">
+        <Welcome :title="welcomeTitle" :description="appInfo.prologue || ''" variant="filled" />
+        <Prompts v-if="suggestedList.length" class="chat-prompts" :items="promptItems" @item-click="onPromptClick" />
+      </div>
 
-      <!-- 消息流 -->
-      <template v-for="(msg, idx) in messages" :key="idx">
-        <div v-if="'user' in msg" class="msg-user">
-          <div class="msg-bubble user">{{ msg.user }}</div>
-        </div>
-        <div v-else class="msg-assistant">
-          <div class="msg-bubble assistant">
-            <tool-call-item v-for="(tc, i) in msg.assistant.toolCalls" :key="i" :record="tc" />
-            <markdown-renderer v-if="msg.assistant.content" :markdown="msg.assistant.content" :is-dark="themeDark" />
-            <span v-if="!msg.assistant.done && !msg.assistant.content" class="typing">正在思考…</span>
-            <citation-list
-              v-if="msg.assistant.done && msg.assistant.citations.length"
-              :citations="msg.assistant.citations"
-              @inspect="openChunkContext"
-            />
+      <!-- 消息流：Element Plus X BubbleList（自动跟随滚动/回底按钮），item 插槽自绘 -->
+      <BubbleList v-else :list="bubbleItems" max-height="100%" :auto-scroll="true" style="height: 100%">
+        <template #item="{ item }">
+          <div v-if="'user' in item.msg" class="msg-row user-row">
+            <div class="msg-bubble user">{{ item.msg.user }}</div>
           </div>
-        </div>
-      </template>
+          <div v-else class="msg-row assistant-row">
+            <div class="msg-bubble assistant">
+              <tool-call-item v-for="(tc, i) in item.msg.assistant.toolCalls" :key="i" :record="tc" />
+              <markdown-renderer v-if="item.msg.assistant.content" :markdown="item.msg.assistant.content" :is-dark="themeDark" />
+              <span v-if="!item.msg.assistant.done && !item.msg.assistant.content" class="typing">
+                <el-icon class="is-loading"><Loading /></el-icon>
+                正在思考…
+              </span>
+              <citation-list
+                v-if="item.msg.assistant.done && item.msg.assistant.citations.length"
+                :citations="item.msg.assistant.citations"
+                @inspect="openChunkContext"
+              />
+            </div>
+          </div>
+        </template>
+      </BubbleList>
 
       <!-- 错误提示 -->
-      <el-alert
-        v-if="streamError"
-        :title="streamError"
-        type="error"
-        :closable="false"
-        show-icon
-        class="chat-error"
-      >
+      <el-alert v-if="streamError" :title="streamError" type="error" :closable="false" show-icon class="chat-error">
         <el-button v-if="retryable" size="small" type="primary" plain @click="sendMessage(lastQuestion)">重试</el-button>
       </el-alert>
     </div>
@@ -67,11 +61,16 @@ import { chatSSE } from '@/api/ai/app';
 import type { ChatStreamState } from '@/api/ai/app/types';
 import { initialChatStreamState } from '@/api/ai/app/types';
 import { useThemeDark } from '@/hooks/common/useTheme';
-import { MarkdownRenderer } from 'x-markdown-vue';
 import { chatStreamReducer, historyToStreamState } from './chat-stream';
 import CitationList from './citation-list.vue';
 import ChunkContextDialog from './chunk-context-dialog.vue';
 import ToolCallItem from './tool-call-item.vue';
+import { BubbleList, Prompts, Welcome } from 'vue-element-plus-x';
+import 'vue-element-plus-x/es/Bubble/index.css';
+import 'vue-element-plus-x/es/BubbleList/index.css';
+import 'vue-element-plus-x/es/Welcome/index.css';
+import 'vue-element-plus-x/es/Prompts/index.css';
+import { MarkdownRenderer } from 'x-markdown-vue';
 
 const props = defineProps<{
   /** 管理端传应用ID；公开模式传 shareCode */
@@ -79,23 +78,29 @@ const props = defineProps<{
   shareCode?: string;
   /** 会话ID（可空=新会话；公开模式由父层持 localStorage） */
   conversationId?: number | string | null;
-  /** 应用公开信息（公开模式父层拉取后传入；管理端可传空由 reload 拉取） */
+  /** 应用公开信息（实时联动：配置页输入即预览） */
   prologue?: string;
+  appName?: string;
   suggestedQuestions?: string[];
 }>();
 
 const emit = defineEmits<{ done: [conversationId: number | string] }>();
 
-const themeDark = useThemeDark();
-const listRef = ref<HTMLElement>();
+const { themeDark } = useThemeDark();
 const chunkDialogRef = ref<InstanceType<typeof ChunkContextDialog>>();
 const input = ref('');
 const streaming = ref(false);
 const streamError = ref('');
 const retryable = ref(false);
 const lastQuestion = ref('');
-const appInfo = computed(() => ({ prologue: props.prologue ?? '', suggested: props.suggestedQuestions ?? [] }));
+
+const appInfo = computed(() => ({
+  prologue: props.prologue ?? '',
+  suggested: props.suggestedQuestions ?? []
+}));
 const suggestedList = computed(() => appInfo.value.suggested);
+const welcomeTitle = computed(() => (props.appName ? `你好，我是 ${props.appName}` : '你好'));
+const promptItems = computed(() => suggestedList.value.map((q, i) => ({ key: i, label: q })));
 
 /** 消息流：user 串 | assistant 流式状态 */
 type DisplayMessage = { user: string } | { assistant: ChatStreamState };
@@ -105,11 +110,20 @@ const localConversationId = ref<number | string | null>(props.conversationId ?? 
 let abortController: AbortController | null = null;
 
 const isPublic = computed(() => !!props.shareCode);
+const chatUrl = () => (isPublic.value ? `/public/app/${props.shareCode}/chat` : `/ai/app/${props.appId}/chat`);
 
-const chatUrl = () =>
-  isPublic.value ? `/public/app/${props.shareCode}/chat` : `/ai/app/${props.appId}/chat`;
+/** BubbleList 数据源（msg 透传给 item 插槽） */
+const bubbleItems = computed(() =>
+  messages.value.map((m, i) => ({ id: i, placement: 'user' in m ? 'end' : 'start', msg: m }))
+);
 
 const openChunkContext = (chunkId: number | string) => chunkDialogRef.value?.open(chunkId);
+
+const onPromptClick = (item: { label?: string }) => {
+  if (item.label) {
+    sendMessage(item.label);
+  }
+};
 
 const handleEnter = () => {
   const text = input.value.trim();
@@ -127,7 +141,6 @@ const sendMessage = async (question: string) => {
   currentStream.value = initialChatStreamState();
   messages.value.push({ assistant: currentStream.value });
   streaming.value = true;
-  scrollToBottom();
   abortController = new AbortController();
   await chatSSE(
     chatUrl(),
@@ -148,7 +161,6 @@ const sendMessage = async (question: string) => {
           streamError.value = frame.data.message;
           retryable.value = frame.data.retryable;
         }
-        scrollToBottom();
       },
       onError: () => {
         streamError.value = '连接中断，请检查网络后重试';
@@ -176,27 +188,20 @@ const stopGenerate = () => {
   finishStream();
 };
 
-const scrollToBottom = () => nextTick(() => {
-  if (listRef.value) {
-    listRef.value.scrollTop = listRef.value.scrollHeight;
-  }
-});
-
 /** 载入历史（管理端与公开端点 URL 不同；回放形态与流式同构） */
 const loadHistory = async (conversationId: number | string) => {
   const url = isPublic.value
     ? `/public/app/${props.shareCode}/conversation/${conversationId}/messages`
     : `/ai/app/conversation/${conversationId}/messages`;
-  const res = await request<unknown, { code: number; data: Array<{ role: string; content: string | null; citations?: never[] | null; toolCalls?: never[] | null }> }>({
+  const res = await request<unknown, { code: number; data: Parameters<typeof historyToStreamState>[0] }>({
     url,
     method: 'get'
   });
   messages.value = historyToStreamState(res.data ?? []);
   localConversationId.value = conversationId;
-  scrollToBottom();
 };
 
-/** 重置为新会话 */
+/** 重置为新会话（回开场白） */
 const reset = () => {
   messages.value = [];
   localConversationId.value = props.conversationId ?? null;
@@ -220,71 +225,70 @@ defineExpose({
   .chat-list {
     flex: 1;
     min-height: 0;
-    overflow-y: auto;
-    padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
   }
 
-  .chat-prologue {
-    align-self: center;
-    text-align: center;
-    color: var(--el-text-color-secondary);
-
-    .prologue-text {
-      font-size: 13px;
-      line-height: 1.6;
-      white-space: pre-wrap;
-    }
-  }
-
-  .chat-suggestions {
+  .chat-welcome {
+    flex: 1;
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
-  }
+    gap: 20px;
+    padding: 24px;
 
-  .msg-user {
-    display: flex;
-    justify-content: flex-end;
-
-    .msg-bubble.user {
-      max-width: 78%;
-      background: var(--el-color-primary);
-      color: #fff;
-      border-radius: 12px 12px 2px 12px;
-      padding: 9px 13px;
-      font-size: 14px;
-      line-height: 1.6;
-      word-break: break-word;
-      white-space: pre-wrap;
+    .chat-prompts {
+      width: 100%;
+      max-width: 560px;
     }
   }
 
-  .msg-assistant {
+  .msg-row {
     display: flex;
-    justify-content: flex-start;
+    padding: 6px 16px;
 
-    .msg-bubble.assistant {
-      max-width: 92%;
-      background: var(--el-fill-color-light);
-      border-radius: 12px 12px 12px 2px;
-      padding: 10px 14px;
-      font-size: 14px;
-      line-height: 1.7;
-      word-break: break-word;
+    &.user-row {
+      justify-content: flex-end;
+
+      .msg-bubble.user {
+        max-width: 78%;
+        background: var(--el-color-primary);
+        color: #fff;
+        border-radius: 12px 12px 2px 12px;
+        padding: 9px 13px;
+        font-size: 14px;
+        line-height: 1.6;
+        word-break: break-word;
+        white-space: pre-wrap;
+      }
+    }
+
+    &.assistant-row {
+      justify-content: flex-start;
+
+      .msg-bubble.assistant {
+        max-width: 92%;
+        background: var(--el-fill-color-light);
+        border-radius: 12px 12px 12px 2px;
+        padding: 10px 14px;
+        font-size: 14px;
+        line-height: 1.7;
+        word-break: break-word;
+      }
     }
   }
 
   .typing {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     color: var(--el-text-color-secondary);
     font-size: 13px;
   }
 
   .chat-error {
-    margin: 0 16px;
+    margin: 0 16px 8px;
   }
 
   .chat-input {
