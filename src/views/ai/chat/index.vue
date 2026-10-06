@@ -37,6 +37,8 @@
             :key="`${selectedAppId}-${activeConversationId ?? 'new'}`"
             :app-id="selectedAppId"
             :conversation-id="activeConversationId"
+            :prologue="selectedApp?.prologue ?? ''"
+            :suggested-questions="selectedAppSuggested"
             @done="refreshConversations"
           />
           <el-empty v-else description="选择一个应用开始对话" />
@@ -57,6 +59,15 @@ const conversations = ref<AiConversationVO[]>([]);
 const selectedAppId = ref<number | string | undefined>(undefined);
 const activeConversationId = ref<number | string | null>(null);
 const panelRef = ref<InstanceType<import('./components/chat-panel.vue').default>>();
+
+const selectedApp = computed(() => appOptions.value.find(a => a.appId === selectedAppId.value));
+const selectedAppSuggested = computed(() => {
+  try {
+    return JSON.parse(selectedApp.value?.suggestedQuestions ?? '[]') as string[];
+  } catch {
+    return [];
+  }
+});
 
 const loadApps = async () => {
   const res = await api.listAiApp({ pageNum: 1, pageSize: 100, status: '0' });

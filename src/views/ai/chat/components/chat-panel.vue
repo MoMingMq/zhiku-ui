@@ -94,8 +94,8 @@ const streaming = ref(false);
 const streamError = ref('');
 const retryable = ref(false);
 const lastQuestion = ref('');
-const appInfo = reactive({ prologue: props.prologue ?? '', suggested: props.suggestedQuestions ?? [] });
-const suggestedList = computed(() => appInfo.suggested);
+const appInfo = computed(() => ({ prologue: props.prologue ?? '', suggested: props.suggestedQuestions ?? [] }));
+const suggestedList = computed(() => appInfo.value.suggested);
 
 /** 消息流：user 串 | assistant 流式状态 */
 type DisplayMessage = { user: string } | { assistant: ChatStreamState };

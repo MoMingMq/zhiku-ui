@@ -184,7 +184,7 @@
           type="info"
           :closable="false"
           show-icon
-          title="推理参数（温度、max_tokens 等）通过列表行「参数设置」配置（Map 任意增删）；应用侧将按参数类型动态生成调整控件"
+          title="推理参数（温度、max_tokens 等）通过列表行「参数设置」配置"
         />
       </el-form>
       <template #footer>
@@ -378,7 +378,9 @@ const initFormData: AiModelForm = {
   baseUrl: '',
   modelCode: '',
   apiKey: undefined,
-  embedDim: undefined,
+  embedDim: 1024,
+  contextWindow: 64000,
+  maxOutputTokens: 4096,
   isDefault: '0',
   status: '0'
 };

@@ -48,6 +48,16 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
+            <el-form-item v-if="paramDefs.length" label="参数配置">
+              <el-button icon="Operation" @click="paramsDialog.visible = true">模型参数配置</el-button>
+              <span class="form-tip">{{ paramDefs.length }} 项参数（{{ paramDefs.map(p => p.label).join('、') }}）</span>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <!-- 模型参数对话框（对齐模型管理的参数设置形态） -->
+        <el-dialog v-model="paramsDialog.visible" title="模型参数配置" width="640px" append-to-body>
+          <el-form label-width="120px">
             <el-form-item v-for="p in paramDefs" :key="p.name" :label="p.label">
               <el-slider
                 v-if="p.inputType === 'slider'"
@@ -55,7 +65,7 @@
                 :min="p.min ?? 0"
                 :max="p.max ?? 1"
                 :step="p.step ?? 0.1"
-                style="width: 90%"
+                style="width: 80%"
                 @update:model-value="(v: number | undefined) => setParam(p.name, v)"
               />
               <el-input-number
@@ -77,8 +87,12 @@
               </el-select>
               <el-input v-else :model-value="String(paramValues[p.name] ?? p.value ?? '')" style="width: 220px" @update:model-value="(v: string) => setParam(p.name, v)" />
             </el-form-item>
-          </el-col>
-        </el-row>
+            <el-empty v-if="!paramDefs.length" description="该模型未定义参数" :image-size="60" />
+          </el-form>
+          <template #footer>
+            <el-button type="primary" @click="paramsDialog.visible = false">完 成</el-button>
+          </template>
+        </el-dialog>
 
         <h4 class="section-title">对话类型</h4>
         <el-form-item label="类型">
@@ -111,7 +125,7 @@
     <!-- 右：调试对话面板 -->
     <div class="settings-debug">
       <div class="debug-title">调试对话（保存后生效）</div>
-      <chat-panel ref="debugPanelRef" :app-id="app.appId" />
+      <chat-panel ref="debugPanelRef" :app-id="app.appId" :prologue="form.prologue ?? ''" :suggested-questions="liveSuggested" />
     </div>
   </div>
 </template>
@@ -141,6 +155,12 @@ const paramDefs = ref<ModelParamDef[]>([]);
 const paramValues = ref<Record<string, unknown>>({});
 const iconFilter = ref('');
 const suggestedText = ref('');
+const paramsDialog = reactive({ visible: false });
+
+/** 推荐问题实时预览（textarea 按行拆，随输入联动右侧调试面板） */
+const liveSuggested = computed(() =>
+  suggestedText.value.split('\n').map(s => s.trim()).filter(Boolean)
+);
 
 const initFormData: AiAppForm = {
   appId: undefined,

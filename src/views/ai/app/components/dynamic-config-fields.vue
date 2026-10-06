@@ -4,8 +4,7 @@
       <!-- 知识库关联（按钮 + 对话框多选 + 已选卡片） -->
       <kb-config-dialog
         v-if="field.component === 'kb-config' || field.component === 'kb-multi'"
-        :model-value="modelValue.kbIds"
-        @update:model-value="(v: Array<number | string>) => emitKbChange(v)"
+        v-model="modelValue.kbConfig"
       />
       <!-- 工具多选（复用 M3 组件交互形态：多选下拉） -->
       <el-select
@@ -52,19 +51,22 @@ const props = defineProps<{ fields: AppConfigField[] }>();
 
 /** 动态配置承载（三仓分类便于 v-model 绑定；组装回 config JSON 由父层完成） */
 const modelValue = reactive({
-  kbIds: [] as Array<number | string>,
+  /** 检索配置整体（kb-config 对话框承载：kbIds/topK/minScore） */
+  kbConfig: { kbIds: [] as Array<number | string>, topK: 5, minScore: 50 },
   tools: [] as Array<number | string>,
   bools: {} as Record<string, boolean>,
   numbers: {} as Record<string, number | undefined>,
   strings: {} as Record<string, string>
 });
-const emit = defineEmits<{ kbChange: [kbIds: Array<number | string>] }>();
-
 const toolOptions = ref<AiToolVO[]>([]);
 
 /** 从 config JSON 初始化各仓 */
 const load = (config: Record<string, unknown>, tools: Array<number | string>) => {
-  modelValue.kbIds = (config.kbIds as Array<number | string>) ?? [];
+  modelValue.kbConfig = {
+    kbIds: (config.kbIds as Array<number | string>) ?? [],
+    topK: (config.topK as number) ?? 5,
+    minScore: (config.minScore as number) ?? 50
+  };
   modelValue.tools = tools ?? [];
   for (const field of props.fields) {
     const value = config[field.name];
@@ -82,8 +84,12 @@ const load = (config: Record<string, unknown>, tools: Array<number | string>) =>
 const buildConfig = (): Record<string, unknown> => {
   const result: Record<string, unknown> = {};
   for (const field of props.fields) {
-    if (field.component === 'kb-multi') {
-      result[field.name] = modelValue.kbIds;
+    if (field.component === 'kb-config' || field.component === 'kb-multi') {
+      Object.assign(result, {
+        kbIds: modelValue.kbConfig.kbIds,
+        topK: modelValue.kbConfig.topK,
+        minScore: modelValue.kbConfig.minScore
+      });
     } else if (field.component === 'switch') {
       result[field.name] = modelValue.bools[field.name];
     } else if (field.component === 'number') {
@@ -93,11 +99,6 @@ const buildConfig = (): Record<string, unknown> => {
     }
   }
   return result;
-};
-
-const emitKbChange = (v: Array<number | string>) => {
-  modelValue.kbIds = v;
-  emit('kbChange', v);
 };
 
 onMounted(async () => {
