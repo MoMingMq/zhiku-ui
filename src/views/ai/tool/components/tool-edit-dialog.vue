@@ -12,12 +12,24 @@
         </el-col>
         <el-col :span="12">
           <el-form-item label="图标" prop="icon">
-            <el-popover placement="bottom-start" :width="316" trigger="click">
+            <el-popover placement="bottom-start" :width="440" trigger="click" :teleported="false">
               <template #reference>
-                <el-input v-model="form.icon" placeholder="点击选择或直接输入 emoji" style="width: 200px" readonly />
+                <el-input :model-value="form.icon" placeholder="点击选择图标" readonly style="width: 220px">
+                  <template #prepend>
+                    <el-icon v-if="form.icon"><component :is="form.icon" /></el-icon>
+                  </template>
+                </el-input>
               </template>
-              <div class="emoji-grid">
-                <span v-for="e in EMOJIS" :key="e" class="emoji-item" @click="form.icon = e">{{ e }}</span>
+              <div class="icon-picker">
+                <el-input v-model="iconFilter" placeholder="搜索图标名" clearable size="small" />
+                <div class="icon-grid">
+                  <el-tooltip v-for="name in filteredIconNames" :key="name" :content="name" placement="top" :show-after="300">
+                    <span class="icon-item" :class="{ 'is-active': form.icon === name }" @click="form.icon = name">
+                      <el-icon :size="18"><component :is="name" /></el-icon>
+                    </span>
+                  </el-tooltip>
+                  <div v-if="filteredIconNames.length === 0" class="icon-empty">无匹配图标</div>
+                </div>
               </div>
             </el-popover>
           </el-form-item>
@@ -212,6 +224,7 @@ import api from '@/api/ai/tool';
 import type { AiToolForm, AiToolVO } from '@/api/ai/tool/types';
 import modal from '@/plugins/modal';
 import { to } from 'await-to-js';
+import * as ElementPlusIconsVue from '@element-plus/icons-vue';
 
 /** 简易视图的参数行（JSON Schema 扁平子集的友好视图） */
 interface ParamRow {
@@ -229,12 +242,8 @@ interface KeyValueRow {
 
 const PARAM_TYPES = ['string', 'number', 'integer', 'boolean'] as const;
 
-const EMOJIS = [
-  '🔧', '🌤️', '🔍', '📅', '📧', '📱', '📊', '🧮', '🌐', '💾',
-  '📄', '🖼️', '🎵', '🎬', '🚗', '✈️', '🚚', '💰', '🛒', '📦',
-  '👤', '👥', '🏢', '🏥', '🎓', '⚖️', '🔒', '🔑', '⚡', '🔔',
-  '💬', '🗺️'
-];
+/** Element Plus 图标名清单（svgicon.ts 已全局注册为组件，component :is 直接可用） */
+const ICON_NAMES = Object.keys(ElementPlusIconsVue);
 
 const emit = defineEmits<{ reload: [] }>();
 
@@ -285,6 +294,11 @@ const paramRows = ref<ParamRow[]>([]);
 const paramSchemaJson = ref('{\n  "type": "object",\n  "properties": {}\n}');
 const headerRows = ref<KeyValueRow[]>([]);
 const queryRows = ref<KeyValueRow[]>([]);
+const iconFilter = ref('');
+
+const filteredIconNames = computed(() =>
+  iconFilter.value ? ICON_NAMES.filter(n => n.toLowerCase().includes(iconFilter.value.toLowerCase())) : ICON_NAMES
+);
 
 /** 参数行 → JSON Schema（提交与切 JSON 视图共用） */
 const rowsToSchema = (rows: ParamRow[]): string => {
@@ -537,20 +551,42 @@ defineExpose({ open });
   }
 }
 
-.emoji-grid {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 4px;
+.icon-picker {
+  .icon-grid {
+    margin-top: 8px;
+    max-height: 260px;
+    overflow: auto;
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 4px;
 
-  .emoji-item {
-    text-align: center;
-    font-size: 18px;
-    padding: 4px 0;
-    border-radius: 4px;
-    cursor: pointer;
+    .icon-item {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 7px 0;
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--el-text-color-regular);
+      border: 1px solid transparent;
 
-    &:hover {
-      background: var(--el-fill-color-light);
+      &:hover {
+        background: var(--el-fill-color-light);
+      }
+
+      &.is-active {
+        border-color: var(--el-color-primary);
+        color: var(--el-color-primary);
+        background: var(--el-color-primary-light-9);
+      }
+    }
+
+    .icon-empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      font-size: 12px;
+      color: var(--el-text-color-secondary);
+      padding: 16px 0;
     }
   }
 }

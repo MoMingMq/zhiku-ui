@@ -31,7 +31,10 @@
         <el-empty v-if="!loading && toolList.length === 0" description="还没有工具，点击右上角创建第一个工具" />
         <div v-for="row in toolList" :key="row.toolId" class="tool-card">
           <div class="tool-card-title">
-            <span class="tool-card-icon">{{ row.icon || '🔧' }}</span>
+            <span class="tool-card-icon">
+              <el-icon v-if="isElementIcon(row.icon)" :size="20"><component :is="row.icon" /></el-icon>
+              <template v-else>{{ row.icon || '🔧' }}</template>
+            </span>
             <div class="tool-card-name-wrap">
               <span class="tool-card-name" :title="row.toolName">{{ row.toolName }}</span>
               <el-switch
@@ -129,6 +132,9 @@ const handleQuery = () => {
   getList();
 };
 
+/** Element 图标名为大写驼峰（全局已注册组件）；其余按 emoji 文本渲染（兼容旧数据） */
+const isElementIcon = (icon: string | null | undefined): boolean => /^[A-Z][A-Za-z0-9]*$/.test(icon ?? '');
+
 const handleAdd = () => {
   editDialogRef.value?.open();
 };
@@ -188,6 +194,13 @@ onMounted(() => {
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 14px;
   min-height: 200px;
+
+  /* 空态占满整行并在网格内水平垂直居中 */
+  .el-empty {
+    grid-column: 1 / -1;
+    place-self: center;
+    padding: 48px 0;
+  }
 }
 
 .tool-card {
