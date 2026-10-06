@@ -37,18 +37,16 @@
       </el-alert>
     </div>
 
-    <!-- 输入区 -->
+    <!-- 输入区：Element Plus X Sender（Enter 发送 / Shift+Enter 换行；loading 态变停止按钮） -->
     <div class="chat-input">
-      <el-input
-        v-model="input"
-        type="textarea"
-        :rows="2"
-        :placeholder="streaming ? '生成中…' : '输入问题，Enter 发送 / Shift+Enter 换行'"
-        :disabled="streaming"
-        @keydown.enter.exact.prevent="handleEnter"
+      <XSender
+        ref="senderRef"
+        class="chat-sender"
+        :loading="streaming"
+        placeholder="输入问题，Enter 发送 / Shift+Enter 换行"
+        @submit="handleSenderSubmit"
+        @cancel="stopGenerate"
       />
-      <el-button v-if="!streaming" type="primary" icon="Promotion" :disabled="!input.trim()" @click="handleEnter">发送</el-button>
-      <el-button v-else type="danger" plain icon="VideoPause" @click="stopGenerate">停止生成</el-button>
     </div>
 
     <chunk-context-dialog ref="chunkDialogRef" />
@@ -65,11 +63,12 @@ import { chatStreamReducer, historyToStreamState } from './chat-stream';
 import CitationList from './citation-list.vue';
 import ChunkContextDialog from './chunk-context-dialog.vue';
 import ToolCallItem from './tool-call-item.vue';
-import { BubbleList, Prompts, Welcome } from 'vue-element-plus-x';
+import { BubbleList, Prompts, Welcome, XSender } from 'vue-element-plus-x';
 import 'vue-element-plus-x/es/Bubble/index.css';
 import 'vue-element-plus-x/es/BubbleList/index.css';
 import 'vue-element-plus-x/es/Welcome/index.css';
 import 'vue-element-plus-x/es/Prompts/index.css';
+import 'vue-element-plus-x/es/XSender/index.css';
 import { MarkdownRenderer } from 'x-markdown-vue';
 
 const props = defineProps<{
@@ -88,7 +87,7 @@ const emit = defineEmits<{ done: [conversationId: number | string] }>();
 
 const { themeDark } = useThemeDark();
 const chunkDialogRef = ref<InstanceType<typeof ChunkContextDialog>>();
-const input = ref('');
+const senderRef = ref<InstanceType<typeof XSender>>();
 const streaming = ref(false);
 const streamError = ref('');
 const retryable = ref(false);
@@ -125,10 +124,13 @@ const onPromptClick = (item: { label?: string }) => {
   }
 };
 
-const handleEnter = () => {
-  const text = input.value.trim();
-  if (!text || streaming.value) return;
-  input.value = '';
+/** XSender 提交：getModelValue 取纯文本（富文本取 .text），发送后 onClear 清空编辑器 */
+const handleSenderSubmit = () => {
+  if (streaming.value) return;
+  const model = senderRef.value?.getModelValue();
+  const text = (model?.text ?? '').trim();
+  if (!text) return;
+  senderRef.value?.onClear();
   sendMessage(text);
 };
 
