@@ -1,61 +1,44 @@
 <template>
-  <div class="app-container kb-problems-page">
-    <!-- 左：问题列表 -->
-    <div class="problem-panel">
-      <div class="panel-head">
-        <span class="panel-title">问题（{{ problems.length }}）</span>
-        <el-button v-hasPermi="['ai:kb:add']" type="primary" size="small" icon="Plus" @click="openAdd">添加问题</el-button>
-      </div>
-      <div class="panel-toolbar">
-        <el-input v-model="keyword" placeholder="搜索问题" clearable size="small" @change="loadProblems">
-          <template #prefix><el-icon><Search /></el-icon></template>
-        </el-input>
-      </div>
-      <div v-loading="loading" class="problem-items">
-        <el-empty v-if="!loading && problems.length === 0" description="暂无问题，点击右上角添加" :image-size="70" />
-        <div
-          v-for="(p, i) in problems"
-          :key="p.problemId"
-          class="problem-item"
-          :class="{ 'is-active': selectedProblem?.problemId === p.problemId }"
-          @click="selectProblem(p)"
-        >
-          <span class="problem-num">{{ i + 1 }}.</span>
-          <span class="problem-content" :title="p.content">{{ p.content }}</span>
-          <!-- 阻断冒泡：操作不触发行选中 -->
-          <span class="problem-actions" @click.stop>
-            <el-tooltip content="关联分段" placement="top">
-              <el-button v-hasPermi="['ai:kb:edit']" link type="primary" icon="Link" size="small" @click="openBind(p)" />
-            </el-tooltip>
-            <el-tooltip content="删除" placement="top">
-              <el-button v-hasPermi="['ai:kb:remove']" link type="danger" icon="Delete" size="small" @click="handleDelete(p)" />
-            </el-tooltip>
-          </span>
-        </div>
-      </div>
-    </div>
-
-    <!-- 右：关联分段（选中问题的绑定列表） -->
-    <div class="bound-panel">
-      <div class="panel-head">
-        <span class="panel-title">关联分段</span>
-        <span v-if="selectedProblem" class="form-tip">共 {{ boundChunks.length }} 段 · 点击解绑可移除</span>
-      </div>
-      <div v-loading="boundLoading" class="bound-list">
-        <el-empty v-if="!selectedProblem" description="点击左侧问题，查看其关联的分段" :image-size="80" />
-        <el-empty v-else-if="!boundLoading && boundChunks.length === 0" description="该问题尚未关联分段，点击「关联分段」绑定" :image-size="80" />
-        <div v-for="chunk in boundChunks" :key="chunk.chunkId" class="bound-card">
-          <div class="bound-content">{{ chunk.content }}</div>
-          <div class="bound-foot">
-            <span class="bound-doc">
-              <el-icon><Document /></el-icon>
-              {{ chunk.documentName }}<template v-if="chunk.title"> · {{ chunk.title }}</template> · #{{ chunk.seq }}
-            </span>
-            <el-button v-hasPermi="['ai:kb:edit']" link type="danger" size="small" @click="handleUnbind(chunk)">解绑</el-button>
+  <div class="kb-problems-page">
+    <el-card shadow="hover" class="table-panel">
+      <template #header>
+        <div class="toolbar-shell">
+          <div class="table-heading">
+            <span class="detail-title">问题管理</span>
+            <span class="form-tip">问题文本向量化参与检索：命中问题后自动展开到其绑定的分段（共 {{ problems.length }} 条）</span>
+          </div>
+          <div class="toolbar-actions">
+            <el-input v-model="keyword" placeholder="搜索问题" clearable style="width: 200px" @change="loadProblems">
+              <template #prefix><el-icon><Search /></el-icon></template>
+            </el-input>
+            <el-button v-hasPermi="['ai:kb:add']" type="primary" plain icon="Plus" @click="openAdd">添加问题</el-button>
           </div>
         </div>
-      </div>
-    </div>
+      </template>
+
+      <el-table v-loading="loading" border class="data-table" :data="problems" @row-click="openDrawer">
+        <el-table-column label="编号" align="center" width="70" type="index" />
+        <el-table-column label="问题" align="left" prop="content" min-width="300" :show-overflow-tooltip="true" />
+        <el-table-column label="关联分段" align="center" width="100">
+          <template #default="scope">
+            <el-tag size="small" :type="scope.row.chunkCount > 0 ? 'primary' : 'info'">{{ scope.row.chunkCount ?? 0 }} 段</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="创建时间" align="center" prop="createTime" width="170">
+          <template #default="scope">{{ parseTime(scope.row.createTime) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" fixed="right" align="center" width="160" class-name="small-padding fixed-width">
+          <template #default="scope">
+            <el-tooltip content="关联分段" placement="top">
+              <el-button v-hasPermi="['ai:kb:edit']" link type="primary" icon="Link" @click.stop="openBind(scope.row)"></el-button>
+            </el-tooltip>
+            <el-tooltip content="删除" placement="top">
+              <el-button v-hasPermi="['ai:kb:remove']" link type="danger" icon="Delete" @click.stop="handleDelete(scope.row)"></el-button>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
 
     <!-- 添加问题（一行一个问题，批量创建） -->
     <el-dialog v-model="addVisible" title="添加问题" width="560px" append-to-body :close-on-click-modal="false">
@@ -75,7 +58,24 @@
       </template>
     </el-dialog>
 
-    <!-- 关联分段（左：文档列表分页搜索 + 绑定数圆点；右：分块分页搜索 + 点击绑定/取消） -->
+    <!-- 问题详情抽屉（点击行：展示关联分块，可解绑） -->
+    <el-drawer v-model="drawerVisible" :title="drawerTitle" size="46%" append-to-body>
+      <div v-loading="drawerLoading" class="drawer-chunk-list">
+        <el-empty v-if="!drawerLoading && drawerChunks.length === 0" description="该问题尚未关联分段，点击操作列「关联分段」绑定" :image-size="80" />
+        <div v-for="chunk in drawerChunks" :key="chunk.chunkId" class="drawer-chunk-card">
+          <div class="drawer-chunk-content">{{ chunk.content }}</div>
+          <div class="drawer-chunk-foot">
+            <span class="drawer-chunk-doc">
+              <el-icon><Document /></el-icon>
+              {{ chunk.documentName }}<template v-if="chunk.title"> · {{ chunk.title }}</template> · #{{ chunk.seq }}
+            </span>
+            <el-button v-hasPermi="['ai:kb:edit']" link type="danger" size="small" @click="handleUnbind(chunk)">解绑</el-button>
+          </div>
+        </div>
+      </div>
+    </el-drawer>
+
+    <!-- 关联分段弹窗（左：文档列表分页搜索 + 绑定数圆点；右：分块分页搜索 + 点击绑定/取消） -->
     <el-dialog v-model="bindVisible" :title="`关联分段 - ${bindProblem?.content?.slice(0, 20)}${bindProblem && bindProblem.content.length > 20 ? '…' : ''}`" width="960px" append-to-body :close-on-click-modal="false" destroy-on-close>
       <div class="bind-layout">
         <!-- 左：文档列表 -->
@@ -89,7 +89,7 @@
               v-for="doc in docList"
               :key="doc.documentId"
               class="bind-doc-item"
-              :class="{ 'is-active': doc.documentId === bindDocId, 'is-bound': boundDocCount(doc.documentId) > 0 }"
+              :class="{ 'is-active': doc.documentId === bindDocId }"
               @click="selectBindDoc(doc)"
             >
               <el-icon class="bind-doc-icon"><Document /></el-icon>
@@ -138,7 +138,7 @@
       <template #footer>
         <div class="dialog-footer">
           <span class="form-tip" style="margin-right: auto">已绑定 {{ boundChunkIdSet.size }} 段（点击分块绑定/取消）</span>
-          <el-button type="primary" @click="bindVisible = false">完 成</el-button>
+          <el-button type="primary" @click="closeBind">完 成</el-button>
         </div>
       </template>
     </el-dialog>
@@ -158,23 +158,31 @@ import {
 } from '@/api/ai/knowledge';
 import { KbChunkVO, KbDocumentVO, KbProblemChunkVO, KbProblemVO } from '@/api/ai/knowledge/types';
 import modal from '@/plugins/modal';
+import { parseTime } from '@/utils/zhiku';
 
 const props = defineProps<{ datasetId: number | string }>();
 
 const problems = ref<KbProblemVO[]>([]);
 const loading = ref(false);
 const keyword = ref('');
-const selectedProblem = ref<KbProblemVO | undefined>(undefined);
-const boundChunks = ref<KbProblemChunkVO[]>([]);
-const boundLoading = ref(false);
 
 const addVisible = ref(false);
 const addContent = ref('');
 const saving = ref(false);
 
+/** 抽屉（点行） */
+const drawerVisible = ref(false);
+const drawerLoading = ref(false);
+const drawerProblem = ref<KbProblemVO | undefined>(undefined);
+const drawerChunks = ref<KbProblemChunkVO[]>([]);
+const drawerTitle = computed(() =>
+  drawerProblem.value ? `问题详情 - ${drawerProblem.value.content.slice(0, 24)}${drawerProblem.value.content.length > 24 ? '…' : ''}` : '问题详情'
+);
+
+/** 绑定弹窗 */
 const bindVisible = ref(false);
 const bindProblem = ref<KbProblemVO | undefined>(undefined);
-/** 当前绑定弹窗的已绑分段（带文档归属，用于圆点计数） */
+/** 当前绑定弹窗的已绑分段（带文档归属，用于圆点计数与切换态） */
 const bindBoundChunks = ref<KbProblemChunkVO[]>([]);
 const boundChunkIdSet = computed(() => new Set(bindBoundChunks.value.map(c => c.chunkId)));
 
@@ -211,29 +219,8 @@ const loadProblems = async () => {
   try {
     const res = await listProblem(props.datasetId, keyword.value);
     problems.value = res.data ?? [];
-    // 选中项被删后清空右侧
-    if (selectedProblem.value && !problems.value.some(p => p.problemId === selectedProblem.value!.problemId)) {
-      selectedProblem.value = undefined;
-      boundChunks.value = [];
-    }
   } finally {
     loading.value = false;
-  }
-};
-
-const selectProblem = async (p: KbProblemVO) => {
-  selectedProblem.value = p;
-  await loadBoundChunks();
-};
-
-const loadBoundChunks = async () => {
-  if (!selectedProblem.value) return;
-  boundLoading.value = true;
-  try {
-    const res = await problemChunks(selectedProblem.value.problemId);
-    boundChunks.value = res.data ?? [];
-  } finally {
-    boundLoading.value = false;
   }
 };
 
@@ -262,6 +249,32 @@ const handleDelete = async (p: KbProblemVO) => {
   await loadProblems();
 };
 
+/** —— 抽屉（点击行） —— */
+const openDrawer = async (row: KbProblemVO) => {
+  drawerProblem.value = row;
+  drawerVisible.value = true;
+  drawerLoading.value = true;
+  try {
+    const res = await problemChunks(row.problemId);
+    drawerChunks.value = res.data ?? [];
+  } finally {
+    drawerLoading.value = false;
+  }
+};
+
+const handleUnbind = async (chunk: KbProblemChunkVO) => {
+  if (!drawerProblem.value) return;
+  await unbindProblemChunks(drawerProblem.value.problemId, [chunk.chunkId]);
+  modal.msgSuccess('已解绑');
+  await Promise.all([openDrawerRefresh(), loadProblems()]);
+};
+
+const openDrawerRefresh = async () => {
+  if (!drawerProblem.value) return;
+  const res = await problemChunks(drawerProblem.value.problemId);
+  drawerChunks.value = res.data ?? [];
+};
+
 /** —— 关联分段弹窗 —— */
 const openBind = async (p: KbProblemVO) => {
   bindProblem.value = p;
@@ -282,6 +295,11 @@ const openBind = async (p: KbProblemVO) => {
   if (docList.value.length > 0) {
     selectBindDoc(docList.value[0]);
   }
+};
+
+const closeBind = async () => {
+  bindVisible.value = false;
+  await loadProblems();
 };
 
 /** —— 左侧文档分页 —— */
@@ -381,15 +399,6 @@ const toggleBind = async (chunk: KbChunkVO) => {
     });
     modal.msgSuccess('已关联');
   }
-  await loadProblems();
-};
-
-/** —— 右侧面板解绑 —— */
-const handleUnbind = async (chunk: KbProblemChunkVO) => {
-  if (!selectedProblem.value) return;
-  await unbindProblemChunks(selectedProblem.value.problemId, [chunk.chunkId]);
-  modal.msgSuccess('已解绑');
-  await Promise.all([loadBoundChunks(), loadProblems()]);
 };
 
 onMounted(() => {
@@ -398,110 +407,30 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-.kb-problems-page {
-  display: flex;
-  flex-direction: row !important;
-  gap: 12px;
-  height: calc(100vh - 84px);
-  padding: 8px;
+@use '@/assets/styles/components/page-shell' as pageShell;
 
-  .form-tip {
-    font-size: 12px;
-    color: var(--el-text-color-secondary);
-  }
+@include pageShell.table-crud-page;
+
+.form-tip {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 
-.problem-panel,
-.bound-panel {
-  flex: 1;
-  min-width: 0;
-  background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+.detail-title {
+  font-size: 15px;
+  font-weight: 600;
 }
 
-.problem-panel {
-  flex: 0 0 42%;
-}
-
-.panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-
-  .panel-title {
-    font-size: 14px;
-    font-weight: 600;
-  }
-}
-
-.panel-toolbar {
-  padding: 8px 14px 0;
-}
-
-.problem-items {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 10px;
-}
-
-.problem-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 10px;
-  border-radius: 6px;
+:deep(.el-table__row) {
   cursor: pointer;
-  transition: background-color 0.15s;
-  margin-bottom: 4px;
-
-  &:hover {
-    background: var(--el-fill-color-light);
-
-    .problem-actions {
-      opacity: 1;
-    }
-  }
-
-  &.is-active {
-    background: var(--el-color-primary-light-9);
-  }
-
-  .problem-num {
-    color: var(--el-text-color-secondary);
-    font-size: 13px;
-    flex-shrink: 0;
-  }
-
-  .problem-content {
-    flex: 1;
-    font-size: 13px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .problem-actions {
-    display: flex;
-    align-items: center;
-    opacity: 0;
-    transition: opacity 0.15s;
-    flex-shrink: 0;
-  }
 }
 
-.bound-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px 14px;
+/* ===== 抽屉 ===== */
+.drawer-chunk-list {
+  min-height: 200px;
 }
 
-.bound-card {
+.drawer-chunk-card {
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 8px;
   padding: 12px 14px;
@@ -512,7 +441,7 @@ onMounted(() => {
     border-color: var(--el-color-primary-light-5);
   }
 
-  .bound-content {
+  .drawer-chunk-content {
     font-size: 13px;
     line-height: 1.7;
     color: var(--el-text-color-regular);
@@ -522,7 +451,7 @@ onMounted(() => {
     overflow-y: auto;
   }
 
-  .bound-foot {
+  .drawer-chunk-foot {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -530,7 +459,7 @@ onMounted(() => {
     padding-top: 8px;
     border-top: 1px solid var(--el-border-color-extra-light);
 
-    .bound-doc {
+    .drawer-chunk-doc {
       display: inline-flex;
       align-items: center;
       gap: 4px;

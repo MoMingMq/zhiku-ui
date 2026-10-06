@@ -325,15 +325,45 @@ onMounted(() => {
 }
 
 .tree-panel-box {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 6px;
-  padding: 10px;
+  padding: 10px 8px;
 
   .tree-panel-title {
     font-size: 13px;
     font-weight: 600;
     margin-bottom: 8px;
+    padding-left: 4px;
     color: var(--el-text-color-secondary);
+  }
+
+  /* WPS 目录感：紧凑行高、小字号、悬停浅底、选中主色 */
+  :deep(.el-tree) {
+    --el-tree-node-content-height: 28px;
+    background: transparent;
+
+    .el-tree-node__content {
+      border-radius: 4px;
+
+      &:hover {
+        background: var(--el-fill-color-light);
+      }
+    }
+
+    .el-tree-node.is-current > .el-tree-node__content {
+      background: var(--el-color-primary-light-9);
+      color: var(--el-color-primary);
+    }
+
+    .el-tree-node__label {
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
 }
 

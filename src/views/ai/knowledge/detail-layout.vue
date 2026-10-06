@@ -12,7 +12,7 @@
       <el-menu :default-active="activeMenu" class="side-menu" @select="handleMenuSelect">
         <el-menu-item index="documents">
           <el-icon><Document /></el-icon>
-          <span>知识库</span>
+          <span>文档</span>
         </el-menu-item>
         <el-menu-item index="problems">
           <el-icon><ChatDotRound /></el-icon>
