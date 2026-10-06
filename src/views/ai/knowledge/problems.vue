@@ -68,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { addProblem, delProblem, getProblem, listDocument, listProblem, updateProblem } from '@/api/ai/knowledge';
+import { addProblem, delProblem, documentChunks, getProblem, listDocument, listProblem, updateProblem } from '@/api/ai/knowledge';
 import { KbChunkVO, KbDocumentVO, KbProblemVO, ProblemBody } from '@/api/ai/knowledge/types';
 import modal from '@/plugins/modal';
 import { parseTime } from '@/utils/zhiku';
