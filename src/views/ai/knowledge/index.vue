@@ -54,9 +54,7 @@
             </div>
             <div class="kb-card-footer">
               <span>{{ parseTime(row.createTime) }}</span>
-              <el-button link type="primary" size="small" @click.stop="enterDetail(row)">
-                文档管理 <el-icon><ArrowRight /></el-icon>
-              </el-button>
+              <span class="kb-card-enter">查看文档 <el-icon><ArrowRight /></el-icon></span>
             </div>
           </div>
         </div>
@@ -80,7 +78,7 @@
             <el-input v-model="form.description" type="textarea" :rows="3" placeholder="知识库用途说明（可选）" maxlength="500" show-word-limit />
           </el-form-item>
           <el-form-item label="向量模型" prop="embedModelId">
-            <el-select v-model="form.embedModelId" placeholder="选择 Embedding 模型" style="width: 100%">
+            <el-select v-model="form.embedModelId" placeholder="选择 Embedding 模型" style="width: 100%" :disabled="!!form.datasetId">
               <el-option
                 v-for="m in embedModels"
                 :key="m.modelId"

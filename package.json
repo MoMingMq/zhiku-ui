@@ -41,12 +41,14 @@
     "pinia": "4.0.3",
     "vue": "3.5.42",
     "vue-cropper": "1.1.4",
+    "vue-element-plus-x": "2.0.3",
     "vue-i18n": "11.4.10",
     "vue-json-pretty": "2.6.0",
     "vue-router": "5.3.1",
     "vue-types": "7.0.0",
     "vxe-pc-ui": "4.18.9",
-    "vxe-table": "4.21.9"
+    "vxe-table": "4.21.9",
+    "x-markdown-vue": "^0.0.204"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",

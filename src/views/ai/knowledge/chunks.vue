@@ -71,7 +71,9 @@
                     <el-icon class="chunk-delete" title="删除分段" @click="handleDeleteChunk(chunk)"><Delete /></el-icon>
                   </span>
                 </div>
-                <div class="chunk-card-content">{{ chunk.content }}</div>
+                <div class="chunk-card-content">
+                  <MarkdownRenderer :markdown="chunk.content" :is-dark="false" />
+                </div>
                 <div class="chunk-card-footer">
                   <el-tag v-if="chunk.headingPath" size="small" type="info" class="chunk-path-tag" :title="chunk.headingPath">
                     {{ chunk.headingPath }}
@@ -92,8 +94,17 @@
           <el-input v-model="editForm.title" placeholder="分段标题（可留空）" maxlength="255" />
         </el-form-item>
         <el-form-item label="内容" prop="content">
-          <el-input v-model="editForm.content" type="textarea" :rows="10" placeholder="分段正文" />
-          <span class="form-tip">保存后自动重新向量化并更新检索索引</span>
+          <div class="content-editor">
+            <el-tabs v-model="editorTab" class="editor-tabs">
+              <el-tab-pane label="编辑" name="edit" />
+              <el-tab-pane label="预览" name="preview" />
+            </el-tabs>
+            <el-input v-if="editorTab === 'edit'" v-model="editForm.content" type="textarea" :rows="10" placeholder="分段正文（支持 Markdown）" />
+            <div v-else class="content-preview">
+              <MarkdownRenderer :markdown="editForm.content || '（空）'" :is-dark="false" />
+            </div>
+            <span class="form-tip">保存后自动重新向量化并更新检索索引</span>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -109,6 +120,7 @@
 <script setup lang="ts">
 import { addChunk, changeChunkDisabled, delChunk, documentChunks, editChunk, reorderChunks } from '@/api/ai/knowledge';
 import { ChunkEditBody, KbChunkVO, KbDocumentVO, documentStatusMap } from '@/api/ai/knowledge/types';
+import { MarkdownRenderer } from 'x-markdown-vue';
 import modal from '@/plugins/modal';
 
 const props = defineProps<{ document: KbDocumentVO }>();
@@ -123,6 +135,7 @@ interface ChunkTreeNode {
 const chunkList = ref<KbChunkVO[]>([]);
 const loading = ref(false);
 const saving = ref(false);
+const editorTab = ref('edit');
 const keyword = ref('');
 const treeRef = ref();
 /** 定位高亮的分段（点击目录后短暂标记） */
@@ -309,7 +322,7 @@ onMounted(() => {
 
 .chunk-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
@@ -391,10 +404,9 @@ onMounted(() => {
     font-size: 13px;
     line-height: 1.6;
     color: var(--el-text-color-regular);
-    white-space: pre-wrap;
     word-break: break-word;
-    max-height: 96px;
-    overflow: hidden;
+    max-height: 140px;
+    overflow-y: auto;
   }
 
   .chunk-card-footer {
@@ -415,6 +427,25 @@ onMounted(() => {
       color: var(--el-text-color-secondary);
       white-space: nowrap;
     }
+  }
+}
+.content-editor {
+  width: 100%;
+
+  .editor-tabs {
+    :deep(.el-tabs__header) {
+      margin-bottom: 8px;
+    }
+  }
+
+  .content-preview {
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 6px;
+    padding: 12px;
+    max-height: 320px;
+    overflow-y: auto;
+    font-size: 13px;
+    line-height: 1.7;
   }
 }
 </style>

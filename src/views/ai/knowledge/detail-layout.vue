@@ -14,6 +14,10 @@
           <el-icon><Document /></el-icon>
           <span>知识库</span>
         </el-menu-item>
+        <el-menu-item index="problems">
+          <el-icon><ChatDotRound /></el-icon>
+          <span>问题</span>
+        </el-menu-item>
         <el-menu-item index="hit-test">
           <el-icon><Aim /></el-icon>
           <span>测试</span>
@@ -27,6 +31,7 @@
     <!-- 右侧内容区 -->
     <div class="layout-content">
       <kb-documents v-if="activeMenu === 'documents'" :dataset-id="datasetId" />
+      <kb-problems v-else-if="activeMenu === 'problems'" :dataset-id="datasetId" />
       <kb-hit-test v-else-if="activeMenu === 'hit-test'" :dataset-id="datasetId" />
     </div>
   </div>
@@ -34,6 +39,7 @@
 
 <script setup lang="ts">
 import KbDocuments from './documents.vue';
+import KbProblems from './problems.vue';
 import KbHitTest from './hit-test.vue';
 import { getDataset } from '@/api/ai/knowledge';
 import { KbDatasetVO } from '@/api/ai/knowledge/types';

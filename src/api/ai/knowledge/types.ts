@@ -82,6 +82,22 @@ export interface ChunkEditBody {
   content: string;
 }
 
+export interface KbProblemVO extends BaseEntity {
+  problemId: number | string;
+  datasetId: number | string;
+  content: string;
+  chunkIds: (number | string)[] | undefined;
+  chunkCount: number | undefined;
+  createTime: string;
+}
+
+export interface ProblemBody {
+  problemId: number | string | undefined;
+  datasetId: number | string;
+  content: string;
+  chunkIds: (number | string)[];
+}
+
 /** 文档状态机（本地映射，后端无字典） */
 export const documentStatusOptions = [
   { value: '0', label: '已上传', type: 'info' },

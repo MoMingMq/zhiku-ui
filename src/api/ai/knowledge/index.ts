@@ -7,6 +7,8 @@ import type {
   KbDatasetQuery,
   KbDatasetVO,
   KbDocumentVO,
+  KbProblemVO,
+  ProblemBody,
   RetrievalHit
 } from './types';
 import type { AxiosPromise, PageResult } from '@/utils/api-types';
@@ -187,6 +189,51 @@ export function reorderChunks(documentId: number | string, chunkIds: (number | s
   });
 }
 
+// ==================== 问题 ====================
+
+// 查询问题列表
+export function listProblem(datasetId: number | string, keyword?: string): AxiosPromise<KbProblemVO[]> {
+  return request({
+    url: '/ai/kb/problem/list',
+    method: 'get',
+    params: { datasetId, keyword }
+  });
+}
+
+// 查询问题详情（含关联分段）
+export function getProblem(problemId: number | string): AxiosPromise<KbProblemVO> {
+  return request({
+    url: '/ai/kb/problem/' + problemId,
+    method: 'get'
+  });
+}
+
+// 新增问题（文本向量化入库）
+export function addProblem(data: ProblemBody) {
+  return request({
+    url: '/ai/kb/problem',
+    method: 'post',
+    data: data
+  });
+}
+
+// 编辑问题（文本变更重新向量化）
+export function updateProblem(data: ProblemBody) {
+  return request({
+    url: '/ai/kb/problem',
+    method: 'put',
+    data: data
+  });
+}
+
+// 删除问题（同步删向量）
+export function delProblem(problemIds: string | number | (string | number)[]) {
+  return request({
+    url: '/ai/kb/problem/' + problemIds,
+    method: 'delete'
+  });
+}
+
 export default {
   listDataset,
   getDataset,
@@ -206,5 +253,10 @@ export default {
   editChunk,
   addChunk,
   delChunk,
-  reorderChunks
+  reorderChunks,
+  listProblem,
+  getProblem,
+  addProblem,
+  updateProblem,
+  delProblem
 };
