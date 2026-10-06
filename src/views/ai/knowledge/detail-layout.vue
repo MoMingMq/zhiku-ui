@@ -1,5 +1,5 @@
 <template>
-  <div class="p-2 app-container kb-detail-layout">
+  <div class="app-container kb-detail-layout">
     <!-- 左侧固定菜单：知识库名称 + 返回 + 子菜单 -->
     <div class="layout-side">
       <div class="side-header" @click="emit('back')">
@@ -63,8 +63,10 @@ onMounted(async () => {
 <style lang="scss" scoped>
 .kb-detail-layout {
   display: flex;
+  flex-direction: row !important;
   gap: 12px;
   align-items: stretch;
+  padding: 8px;
   min-height: calc(100vh - 120px);
 }
 

@@ -72,7 +72,7 @@
                   </span>
                 </div>
                 <div class="chunk-card-content">
-                  <MarkdownRenderer :markdown="chunk.content" :is-dark="false" />
+                  <MarkdownRenderer :markdown="chunk.content" :is-dark="isDark" />
                 </div>
                 <div class="chunk-card-footer">
                   <el-tag v-if="chunk.headingPath" size="small" type="info" class="chunk-path-tag" :title="chunk.headingPath">
@@ -95,14 +95,13 @@
         </el-form-item>
         <el-form-item label="内容" prop="content">
           <div class="content-editor">
-            <el-tabs v-model="editorTab" class="editor-tabs">
-              <el-tab-pane label="编辑" name="edit" />
-              <el-tab-pane label="预览" name="preview" />
-            </el-tabs>
-            <el-input v-if="editorTab === 'edit'" v-model="editForm.content" type="textarea" :rows="10" placeholder="分段正文（支持 Markdown）" />
-            <div v-else class="content-preview">
-              <MarkdownRenderer :markdown="editForm.content || '（空）'" :is-dark="false" />
-            </div>
+            <MdEditor
+              v-model="editForm.content"
+              :style="{ height: '320px' }" :dark="isDark"
+              language="zh-CN"
+              placeholder="分段正文（Markdown）"
+              :toolbarsExclude="['github', 'htmlPreview', 'catalog', 'save']"
+            />
             <span class="form-tip">保存后自动重新向量化并更新检索索引</span>
           </div>
         </el-form-item>
@@ -121,6 +120,9 @@
 import { addChunk, changeChunkDisabled, delChunk, documentChunks, editChunk, reorderChunks } from '@/api/ai/knowledge';
 import { ChunkEditBody, KbChunkVO, KbDocumentVO, documentStatusMap } from '@/api/ai/knowledge/types';
 import { MarkdownRenderer } from 'x-markdown-vue';
+import { MdEditor } from 'md-editor-v3';
+import 'md-editor-v3/lib/style.css';
+import { useDark } from '@vueuse/core';
 import modal from '@/plugins/modal';
 
 const props = defineProps<{ document: KbDocumentVO }>();
@@ -135,7 +137,7 @@ interface ChunkTreeNode {
 const chunkList = ref<KbChunkVO[]>([]);
 const loading = ref(false);
 const saving = ref(false);
-const editorTab = ref('edit');
+const isDark = useDark({ storageKey: 'useDarkKey', valueDark: 'dark', valueLight: 'light' });
 const keyword = ref('');
 const treeRef = ref();
 /** 定位高亮的分段（点击目录后短暂标记） */
@@ -182,6 +184,7 @@ const treeData = computed<ChunkTreeNode[]>(() => {
         child = { key, label: part, children: [] };
         current.children.push(child);
       }
+      // 计数由 matchesTree 时聚合
       current = child;
     });
   }
@@ -405,8 +408,21 @@ onMounted(() => {
     line-height: 1.6;
     color: var(--el-text-color-regular);
     word-break: break-word;
-    max-height: 140px;
+    max-height: 160px;
     overflow-y: auto;
+
+    :deep(.md-renderer-wrapper),
+    :deep(.markdown-renderer),
+    :deep(.markdown-body) {
+      background: transparent !important;
+      color: inherit;
+    }
+
+    :deep(pre),
+    :deep(code) {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
   }
 
   .chunk-card-footer {
@@ -446,6 +462,11 @@ onMounted(() => {
     overflow-y: auto;
     font-size: 13px;
     line-height: 1.7;
+
+    :deep(.md-renderer-wrapper),
+    :deep(.markdown-body) {
+      background: transparent !important;
+    }
   }
 }
 </style>

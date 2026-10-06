@@ -39,30 +39,20 @@
         <el-table-column label="上传时间" align="center" prop="createTime" width="170">
           <template #default="scope">{{ parseTime(scope.row.createTime) }}</template>
         </el-table-column>
-        <el-table-column label="操作" fixed="right" align="center" width="240" class-name="small-padding fixed-width">
+        <el-table-column label="操作" fixed="right" align="center" width="150" class-name="small-padding fixed-width">
           <template #default="scope">
-            <el-button v-hasPermi="['ai:kb:query']" link type="primary" icon="View" @click="viewingDocument = scope.row">分段</el-button>
-            <el-button
-              v-if="scope.row.status === 'D'"
-              v-hasPermi="['ai:kb:edit']"
-              link
-              type="warning"
-              icon="RefreshRight"
-              @click="handleRetry(scope.row)"
-            >
-              重试
-            </el-button>
-            <el-button
-              v-if="scope.row.status === '4' || scope.row.status === 'D'"
-              v-hasPermi="['ai:kb:edit']"
-              link
-              type="primary"
-              icon="Refresh"
-              @click="handleReingest(scope.row)"
-            >
-              重切
-            </el-button>
-            <el-button v-hasPermi="['ai:kb:remove']" link type="danger" icon="Delete" @click="handleDeleteDoc(scope.row)"></el-button>
+            <el-tooltip content="详情" placement="top">
+              <el-button v-hasPermi="['ai:kb:query']" link type="primary" icon="View" @click="viewingDocument = scope.row"></el-button>
+            </el-tooltip>
+            <el-tooltip v-if="scope.row.status === 'D'" content="重试" placement="top">
+              <el-button v-hasPermi="['ai:kb:edit']" link type="warning" icon="RefreshRight" @click="handleRetry(scope.row)"></el-button>
+            </el-tooltip>
+            <el-tooltip v-if="scope.row.status === '4' || scope.row.status === 'D'" content="重切" placement="top">
+              <el-button v-hasPermi="['ai:kb:edit']" link type="primary" icon="Refresh" @click="handleReingest(scope.row)"></el-button>
+            </el-tooltip>
+            <el-tooltip content="删除" placement="top">
+              <el-button v-hasPermi="['ai:kb:remove']" link type="danger" icon="Delete" @click="handleDeleteDoc(scope.row)"></el-button>
+            </el-tooltip>
           </template>
         </el-table-column>
       </el-table>

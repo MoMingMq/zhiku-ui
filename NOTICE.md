@@ -7,6 +7,7 @@ Copyright (c) 2026 莫名
 - Vue 3 — MIT License
 - Element Plus — MIT License
 - x-markdown-vue（Markdown 渲染组件）— MIT License
+- md-editor-v3（Markdown 编辑器）— MIT License
 - vue-element-plus-x（AI 交互组件库）— MIT License
 - Vite — MIT License
 - Pinia — MIT License
