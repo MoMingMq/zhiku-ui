@@ -21,27 +21,13 @@
 
       <div v-loading="loading" class="app-card-grid">
         <el-empty v-if="!loading && appList.length === 0" description="还没有应用，点击右上角创建" />
-        <div v-for="row in appList" :key="row.appId" class="app-card">
+        <div v-for="row in appList" :key="row.appId" class="app-card" @click="routerPush(row.appId)">
           <div class="app-card-title">
             <span class="app-card-icon">
               <el-icon v-if="isElementIcon(row.icon)" :size="20"><component :is="row.icon" /></el-icon>
               <template v-else>{{ row.icon || '🤖' }}</template>
             </span>
             <span class="app-card-name" :title="row.appName">{{ row.appName }}</span>
-            <span class="app-card-more-wrap" @click.stop>
-              <el-dropdown trigger="click" @command="(cmd: string) => handleCardCommand(cmd, row)">
-                <el-icon class="app-card-more"><MoreFilled /></el-icon>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="config" v-hasPermi="['ai:app:edit']">配置</el-dropdown-item>
-                    <el-dropdown-item command="chat" divided v-hasPermi="['ai:app:chat']">对话</el-dropdown-item>
-                    <el-dropdown-item command="delete" v-hasPermi="['ai:app:remove']">
-                      <span style="color: var(--el-color-danger)">删除</span>
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </span>
           </div>
           <div class="app-card-desc">{{ row.description || '暂无描述' }}</div>
           <div class="app-card-meta">
@@ -53,6 +39,10 @@
             <el-tag v-if="row.shareEnabled === '1'" size="small" type="info" effect="plain">已公开</el-tag>
             <span v-else />
             <span>{{ parseTime(row.createTime) }}</span>
+          </div>
+          <div class="app-card-ops" @click.stop>
+            <el-button v-hasPermi="['ai:app:chat']" size="small" type="primary" plain icon="ChatDotRound" @click="goChat(row)">对话</el-button>
+            <el-button v-hasPermi="['ai:app:remove']" size="small" type="danger" plain icon="Delete" @click="handleDelete(row)">删除</el-button>
           </div>
         </div>
       </div>
@@ -168,17 +158,15 @@ const exitDetail = () => {
   getList();
 };
 
-const handleCardCommand = async (cmd: string, row: AiAppVO) => {
-  if (cmd === 'config') {
-    routerPush(row.appId);
-  } else if (cmd === 'chat') {
-    useRouter().push({ path: '/ai/chat', query: { appId: row.appId } });
-  } else if (cmd === 'delete') {
-    await modal.confirm(`删除应用"${row.appName}"？（知识库/工具挂载与会话将一并删除）`);
-    await api.delAiApp(row.appId);
-    modal.msgSuccess('删除成功');
-    await getList();
-  }
+const goChat = (row: AiAppVO) => {
+  useRouter().push({ path: '/ai/chat', query: { appId: row.appId } });
+};
+
+const handleDelete = async (row: AiAppVO) => {
+  await modal.confirm(`删除应用"${row.appName}"？（知识库/工具挂载与会话将一并删除）`);
+  await api.delAiApp(row.appId);
+  modal.msgSuccess('删除成功');
+  await getList();
 };
 
 onMounted(async () => {
@@ -211,6 +199,7 @@ onMounted(async () => {
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 10px;
   transition: all 0.25s;
+  cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -302,6 +291,12 @@ onMounted(async () => {
     padding-top: 10px;
     font-size: 12px;
     color: var(--el-text-color-secondary);
+  }
+
+  .app-card-ops {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
   }
 }
 </style>
