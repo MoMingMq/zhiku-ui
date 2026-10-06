@@ -16,6 +16,7 @@
             class="conv-list"
             :items="conversationItems"
             :items-style="{ backgroundColor: 'transparent' }"
+            :menu="conversationMenu"
             @change="onConversationChange"
             @menu-command="onConversationMenu"
           />
@@ -26,13 +27,12 @@
           <chat-panel
             v-if="selectedAppId"
             ref="panelRef"
-            :key="`${selectedAppId}-${activeConversationId ?? 'new'}`"
             :app-id="selectedAppId"
             :conversation-id="activeConversationId"
             :prologue="selectedApp?.prologue ?? ''"
             :app-name="selectedApp?.appName"
             :suggested-questions="selectedAppSuggested"
-            @done="refreshConversations"
+            @done="onChatDone"
           />
           <el-empty v-else description="选择一个应用开始对话" />
         </main>
@@ -72,6 +72,11 @@ const onConversationChange = (item: { key?: string | number }) => {
   }
 };
 
+const conversationMenu = [
+  { label: '重命名', key: 'rename', icon: markRaw(Edit) },
+  { label: '删除', key: 'delete', icon: markRaw(Delete), divided: true }
+];
+
 const onConversationMenu = (command: { command?: string; key?: string | number }, item?: { key?: string | number }) => {
   const convId = item?.key;
   if (!convId) return;
@@ -103,6 +108,7 @@ const loadApps = async () => {
 
 const handleAppChange = async () => {
   activeConversationId.value = null;
+  panelRef.value?.reset();
   await refreshConversations();
 };
 
@@ -118,11 +124,18 @@ const refreshConversations = async () => {
 const openConversation = async (conversationId: number | string) => {
   activeConversationId.value = conversationId;
   await nextTick();
-  panelRef.value?.loadHistory(conversationId);
+  await panelRef.value?.loadHistory(conversationId);
 };
 
 const newConversation = () => {
   activeConversationId.value = null;
+  panelRef.value?.reset();
+};
+
+/** done 后刷新两次：立即一次（新会话入列），2 秒后再一次（AI 生成的标题就位） */
+const onChatDone = () => {
+  refreshConversations();
+  setTimeout(refreshConversations, 2000);
 };
 
 const renameConversation = async (c: AiConversationVO) => {
