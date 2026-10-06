@@ -46,6 +46,7 @@ import api from '@/api/ai/app';
 import type { AiAppVO, AiConversationVO } from '@/api/ai/app/types';
 import modal from '@/plugins/modal';
 import { Conversations } from 'vue-element-plus-x';
+import { ChatLineRound, Delete, Edit } from '@element-plus/icons-vue';
 import 'vue-element-plus-x/es/Conversations/index.css';
 
 const route = useRoute();
