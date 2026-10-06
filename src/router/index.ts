@@ -27,6 +27,12 @@ import Layout from '@/layout/index.vue';
 // 公共路由
 export const constantRoutes: RouteRecordRaw[] = [
   {
+    path: '/public/app/:shareCode',
+    name: 'PublicAppChat',
+    component: () => import('@/views/public/app-chat.vue'),
+    meta: { title: 'AI 对话' }
+  },
+  {
     path: '/redirect',
     component: Layout,
     hidden: true,
