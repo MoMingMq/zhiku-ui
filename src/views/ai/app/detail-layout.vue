@@ -24,7 +24,7 @@
       </el-menu>
     </aside>
     <main class="app-main">
-      <app-overview v-if="activeTab === 'overview'" :app="app" :stats="stats" @start-chat="startChat" @refresh="loadAll" />
+      <app-overview v-if="activeTab === 'overview' && app" :app="app" :stats="stats" @start-chat="startChat" @refresh="loadAll" />
       <app-settings v-else-if="app" :app="app" @saved="loadAll" />
     </main>
   </div>
