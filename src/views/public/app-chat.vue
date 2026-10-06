@@ -10,7 +10,7 @@
         <div class="pub-app-name">{{ appInfo.appName }}</div>
         <div class="pub-app-desc">{{ appInfo.description }}</div>
       </div>
-      <el-button class="pub-new" type="primary" plain icon="Plus" @click="newConversation">新对话</el-button>
+      <el-button class="pub-new" icon="Plus" @click="newConversation">新对话</el-button>
       <div class="pub-convs">
         <div
           v-for="c in localConversations"
@@ -235,6 +235,7 @@ onMounted(async () => {
           flex: 1;
           min-width: 0;
           font-size: 13px;
+          color: var(--el-text-color-primary);
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;

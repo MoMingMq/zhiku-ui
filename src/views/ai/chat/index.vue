@@ -8,7 +8,7 @@
             <el-option v-for="a in appOptions" :key="a.appId" :label="a.appName" :value="a.appId" />
           </el-select>
           <div class="conv-actions">
-            <el-button size="small" type="primary" plain icon="Plus" :disabled="!selectedAppId" @click="newConversation">新对话</el-button>
+            <el-button size="small" icon="Plus" :disabled="!selectedAppId" @click="newConversation">新对话</el-button>
           </div>
           <!-- Element Plus X Conversations 会话列表（内置激活态/菜单；样式经 :deep 适配主题与容器宽） -->
           <Conversations
@@ -236,6 +236,11 @@ onMounted(loadApps);
 
       :deep(.elx-conversations-item__content) {
         font-size: 13px;
+        color: var(--el-text-color-primary);
+      }
+
+      :deep(.elx-conversations-item) {
+        color: var(--el-text-color-primary);
       }
     }
   }

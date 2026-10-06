@@ -3,7 +3,11 @@
     <div ref="listRef" class="chat-list">
       <!-- 空态：Welcome + Prompts 居中（实时联动配置） -->
       <div v-if="messages.length === 0 && !streaming" class="chat-welcome">
-        <Welcome :title="welcomeTitle" :description="appInfo.prologue || ''" variant="filled" />
+        <div class="welcome-hero">
+          <div class="welcome-emoji">{{ appIcon || '💬' }}</div>
+          <h2 class="welcome-title">{{ welcomeTitle }}</h2>
+          <p v-if="appInfo.prologue" class="welcome-desc">{{ appInfo.prologue }}</p>
+        </div>
         <Prompts v-if="suggestedList.length" class="chat-prompts" :items="promptItems" @item-click="onPromptClick" />
       </div>
 
@@ -99,22 +103,20 @@
           </div>
         </aside>
         <section v-loading="citationDrawer.loading" class="cd-preview">
-          <template v-if="citationDrawer.preview">
-            <div class="cd-preview-meta">
-              <el-tag size="small" effect="plain">{{ citationDrawer.preview.headingPath || '（无标题路径）' }}</el-tag>
-              <el-tag size="small" type="info" effect="plain">#{{ citationDrawer.preview.seq }}</el-tag>
-            </div>
-            <div v-if="citationDrawer.preview.prevContent" class="cd-block">
-              <div class="cd-block-label">上一分块</div>
-              <MarkdownRenderer :markdown="citationDrawer.preview.prevContent" :is-dark="themeDark" />
-            </div>
-            <div class="cd-block cd-block-current">
-              <div class="cd-block-label cd-block-label-current">命中的分块</div>
-              <MarkdownRenderer :markdown="citationDrawer.preview.content" :is-dark="themeDark" />
-            </div>
-            <div v-if="citationDrawer.preview.nextContent" class="cd-block">
-              <div class="cd-block-label">下一分块</div>
-              <MarkdownRenderer :markdown="citationDrawer.preview.nextContent" :is-dark="themeDark" />
+          <template v-if="citationDrawer.citations.length">
+            <div v-for="(c, i) in citationDrawer.citations" :key="c.chunkId" class="citation-chunk-card">
+              <div class="ccc-head">
+                <span class="ccc-idx">[{{ i + 1 }}]</span>
+                <span class="ccc-title">{{ c.headingPath || c.documentName }}</span>
+                <span class="ccc-score">{{ (c.score * 100).toFixed(0) }}%</span>
+              </div>
+              <div class="ccc-body">
+                <MarkdownRenderer :markdown="citationDrawer.contents[i] || c.snippet" :is-dark="themeDark" />
+              </div>
+              <div class="ccc-doc">
+                <el-icon><Document /></el-icon>
+                <span>来自文档：{{ c.documentName }} · 第 {{ (c.seq ?? 0) + 1 }} 块</span>
+              </div>
             </div>
           </template>
           <el-empty v-else-if="!citationDrawer.loading" description="选择左侧引用查看原文" :image-size="60" />
@@ -132,13 +134,13 @@ import { initialChatStreamState } from '@/api/ai/app/types';
 import { useThemeDark } from '@/hooks/common/useTheme';
 import { chatStreamReducer, historyToStreamState } from './chat-stream';
 import ToolCallItem from './tool-call-item.vue';
-import { BubbleList, Prompts, Welcome, XSender } from 'vue-element-plus-x';
+import { BubbleList, Prompts, XSender } from 'vue-element-plus-x';
 import 'vue-element-plus-x/es/Bubble/index.css';
 import 'vue-element-plus-x/es/BubbleList/index.css';
-import 'vue-element-plus-x/es/Welcome/index.css';
 import 'vue-element-plus-x/es/Prompts/index.css';
 import 'vue-element-plus-x/es/XSender/index.css';
 import { MarkdownRenderer } from 'x-markdown-vue';
+import { Document } from '@element-plus/icons-vue';
 
 const props = defineProps<{
   /** 管理端传应用ID；公开模式传 shareCode */
@@ -149,6 +151,7 @@ const props = defineProps<{
   /** 应用公开信息（实时联动：配置页输入即预览） */
   prologue?: string;
   appName?: string;
+  appIcon?: string;
   suggestedQuestions?: string[];
   /** 会话消息总数（供父层滚动分页判断） */
   messageTotal?: number;
@@ -172,7 +175,7 @@ const appInfo = computed(() => ({
   suggested: props.suggestedQuestions ?? []
 }));
 const suggestedList = computed(() => appInfo.value.suggested);
-const welcomeTitle = computed(() => (props.appName ? `你好，我是 ${props.appName}` : '你好'));
+const welcomeTitle = computed(() => (props.appName ? `你好，我是 ${props.appName}` : '有什么可以帮你？'));
 const promptItems = computed(() => suggestedList.value.map((q, i) => ({ key: i, label: q })));
 
 /** 消息流：user 串 | assistant 流式状态 */
@@ -220,27 +223,29 @@ const citationDrawer = reactive({
   visible: false,
   loading: false,
   citations: [] as CitationVO[],
-  activeId: null as number | string | null,
-  preview: null as { headingPath: string | null; seq: number; prevContent: string | null; content: string | null; nextContent: string | null } | null
+  contents: {} as Record<number, string>
 });
 
-const openCitations = (citations: CitationVO[]) => {
+const openCitations = async (citations: CitationVO[]) => {
   citationDrawer.citations = dedupeCitations(citations);
+  citationDrawer.contents = {};
   citationDrawer.visible = true;
-  if (citationDrawer.citations.length) {
-    selectCitation(citationDrawer.citations[0]);
-  }
-};
-
-const selectCitation = async (c: CitationVO) => {
-  citationDrawer.activeId = c.chunkId;
   citationDrawer.loading = true;
   try {
-    const url = isPublic.value
-      ? `/public/app/${props.shareCode}/chunk-context/${c.chunkId}`
-      : `/ai/app/chunk/${c.chunkId}/context`;
-    const res = await request<unknown, { code: number; data: typeof citationDrawer.preview }>({ url, method: 'get' });
-    citationDrawer.preview = res.data;
+    // 并行拉每个引用分块的原文（用户视角：直接看内容卡片）
+    const results = await Promise.all(
+      citationDrawer.citations.map(c => {
+        const url = isPublic.value
+          ? `/public/app/${props.shareCode}/chunk-context/${c.chunkId}`
+          : `/ai/app/chunk/${c.chunkId}/context`;
+        return request<unknown, { code: number; data: { content: string | null } }>({ url, method: 'get' })
+          .then(r => r.data?.content ?? c.snippet)
+          .catch(() => c.snippet);
+      })
+    );
+    const map: Record<number, string> = {};
+    results.forEach((content, i) => (map[i] = content));
+    citationDrawer.contents = map;
   } finally {
     citationDrawer.loading = false;
   }
@@ -371,8 +376,33 @@ defineExpose({
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 20px;
+    gap: 32px;
     padding: 24px;
+
+    .welcome-hero {
+      text-align: center;
+
+      .welcome-emoji {
+        font-size: 40px;
+        margin-bottom: 12px;
+      }
+
+      .welcome-title {
+        margin: 0 0 8px;
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--el-text-color-primary);
+      }
+
+      .welcome-desc {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.7;
+        color: var(--el-text-color-secondary);
+        white-space: pre-wrap;
+        max-width: 520px;
+      }
+    }
 
     .chat-prompts {
       width: 100%;
@@ -422,14 +452,19 @@ defineExpose({
 
   :deep(.elx-bubble) {
     --elx-bubble-content-max-width: min(72%, 680px) !important;
-    margin-bottom: 18px;
+    margin-bottom: 20px;
 
     &.elx-bubble--end .elx-bubble__content {
-      border-radius: 14px 14px 4px 14px;
+      border-radius: 18px 18px 6px 18px !important;
+      background: var(--el-color-primary) !important;
+      padding: 10px 16px;
     }
 
     &.elx-bubble--start .elx-bubble__content {
-      border-radius: 4px 14px 14px 14px;
+      border-radius: 6px 18px 18px 18px !important;
+      background: var(--el-fill-color-light) !important;
+      padding: 14px 18px;
+      border: 1px solid var(--el-border-color-extra-light);
     }
   }
 
@@ -439,7 +474,6 @@ defineExpose({
     word-break: break-word;
 
     &.user {
-      color: #fff;
       white-space: pre-wrap;
     }
 
@@ -525,112 +559,70 @@ defineExpose({
     }
   }
 
-  /* 引用抽屉：左列表 + 右预览（MD 渲染对齐知识库分块） */
+  /* 引用抽屉：分块卡片列表（每卡：标题路径头 + MD 内容 + 底部所属文档） */
   .citation-drawer {
-    display: flex;
     height: 100%;
-    gap: 14px;
+    overflow-y: auto;
 
-    .cd-list {
-      width: 240px;
-      flex-shrink: 0;
-      overflow-y: auto;
-      border-right: 1px solid var(--el-border-color-lighter);
-      padding-right: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
+    .citation-chunk-card {
+      margin-bottom: 16px;
+      border: 1px solid var(--el-border-color-lighter);
+      border-radius: 12px;
+      background: var(--el-bg-color);
+      overflow: hidden;
 
-      .cd-item {
+      .ccc-head {
         display: flex;
+        align-items: center;
         gap: 8px;
-        padding: 10px;
-        border-radius: 8px;
-        cursor: pointer;
-        border: 1px solid transparent;
-        transition: all 0.2s;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--el-border-color-extra-light);
+        background: var(--el-fill-color-light);
 
-        .cd-item-idx {
+        .ccc-idx {
           color: var(--el-color-primary);
           font-weight: 700;
-          font-size: 13px;
         }
 
-        .cd-item-body {
+        .ccc-title {
           flex: 1;
           min-width: 0;
-
-          .cd-item-doc {
-            font-size: 13px;
-            font-weight: 600;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          }
-
-          .cd-item-path {
-            font-size: 12px;
-            color: var(--el-text-color-secondary);
-            margin-top: 2px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          }
-        }
-
-        .cd-item-score {
-          font-size: 12px;
-          color: var(--el-text-color-secondary);
-        }
-
-        &:hover {
-          background: var(--el-fill-color-light);
-        }
-
-        &.is-active {
-          border-color: var(--el-color-primary-light-5);
-          background: var(--el-color-primary-light-9);
-        }
-      }
-    }
-
-    .cd-preview {
-      flex: 1;
-      min-width: 0;
-      overflow-y: auto;
-
-      .cd-preview-meta {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 12px;
-      }
-
-      .cd-block {
-        margin-bottom: 16px;
-
-        .cd-block-label {
-          font-size: 12px;
+          font-size: 13px;
           font-weight: 600;
+          color: var(--el-text-color-primary);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .ccc-score {
+          font-size: 12px;
           color: var(--el-text-color-secondary);
-          margin-bottom: 6px;
         }
+      }
 
-        .cd-block-label-current {
-          color: var(--el-color-primary);
-        }
+      .ccc-body {
+        padding: 14px 16px;
+        font-size: 14px;
 
-        &.cd-block-current {
-          padding: 12px;
-          border-radius: 8px;
-          background: var(--el-color-primary-light-9);
-          border: 1px solid var(--el-color-primary-light-7);
-        }
-
-        /* 相邻分块的 MD 渲染同主题 */
         :deep(.x-md-renderer) {
           background: transparent !important;
           padding: 0 !important;
           color: inherit !important;
+        }
+      }
+
+      .ccc-doc {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-top: 1px dashed var(--el-border-color-extra-light);
+        font-size: 12px;
+        color: var(--el-text-color-secondary);
+
+        .el-icon {
+          color: var(--el-color-primary);
         }
       }
     }
