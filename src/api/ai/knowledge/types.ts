@@ -98,6 +98,23 @@ export interface ProblemBody {
   chunkIds: (number | string)[];
 }
 
+/** 问题关联分段（含文档名，右侧面板/解绑用） */
+export interface KbProblemChunkVO {
+  chunkId: number | string;
+  documentId: number | string;
+  documentName: string;
+  title: string;
+  content: string;
+  seq: number;
+  charCount: number;
+}
+
+/** 分段分页查询参数（绑定弹窗滚动分页） */
+export interface ChunkPageQuery extends PageQuery {
+  searchType?: 'title' | 'content';
+  keyword?: string;
+}
+
 /** 文档状态机（本地映射，后端无字典） */
 export const documentStatusOptions = [
   { value: '0', label: '已上传', type: 'info' },

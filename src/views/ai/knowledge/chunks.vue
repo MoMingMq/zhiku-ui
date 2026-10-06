@@ -1,5 +1,5 @@
 <template>
-  <div class="p-2 app-container ai-kb-chunks-page">
+  <div class="app-container ai-kb-chunks-page">
     <el-card shadow="hover" class="table-panel">
       <template #header>
         <div class="toolbar-shell">
@@ -18,9 +18,9 @@
         </div>
       </template>
 
-      <el-row :gutter="14">
-        <!-- 左：文档标题目录（解析产物，点击定位到对应正文分段） -->
-        <el-col :span="6">
+      <el-row :gutter="14" class="chunks-row">
+        <!-- 左：文档标题目录（解析产物，点击定位到对应正文分段）；固定高度独立滚动 -->
+        <el-col :span="6" class="tree-col">
           <div class="tree-panel-box">
             <div class="tree-panel-title">文档目录</div>
             <el-tree
@@ -36,8 +36,8 @@
           </div>
         </el-col>
 
-        <!-- 右：分段卡片（点击编辑 / 拖拽排序 / 启用开关 / 删除） -->
-        <el-col :span="18">
+        <!-- 右：分段卡片（点击编辑 / 拖拽排序 / 启用开关 / 删除）；独立滚动 -->
+        <el-col :span="18" class="chunks-col">
           <div v-loading="loading" class="chunk-grid-wrap">
             <el-empty v-if="!loading && filteredChunks.length === 0" :description="keyword ? '无匹配分段' : '该文档暂无分段'" :image-size="90" />
             <div class="chunk-grid">
@@ -172,7 +172,7 @@ const loadChunks = async () => {
 
 /** 由 headingPath 构建层级目录树（叶子 key 指向该标题下首段） */
 const treeData = computed<ChunkTreeNode[]>(() => {
-  const root: ChunkTreeNode = { key: '', label: '全部分段', children: [] };
+  const root: ChunkTreeNode = { key: '', label: '__root__', children: [] };
   for (const chunk of chunkList.value) {
     if (!chunk.headingPath) continue;
     let current = root;
@@ -188,7 +188,8 @@ const treeData = computed<ChunkTreeNode[]>(() => {
       current = child;
     });
   }
-  return root.children.length > 0 ? [root] : [];
+  // 不展示虚拟根节点：直接输出标题层级（无标题的文档输出空树）
+  return root.children;
 });
 
 const matchesKeyword = (chunk: KbChunkVO) => {
@@ -304,6 +305,23 @@ onMounted(() => {
 .detail-title {
   font-size: 15px;
   font-weight: 600;
+}
+
+.chunks-row {
+  flex: 1;
+  min-height: 0;
+
+  .tree-col {
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chunks-col {
+    height: 100%;
+    overflow-y: auto;
+  }
 }
 
 .tree-panel-box {

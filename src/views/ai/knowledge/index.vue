@@ -54,7 +54,6 @@
             </div>
             <div class="kb-card-footer">
               <span>{{ parseTime(row.createTime) }}</span>
-              <span class="kb-card-enter">查看文档 <el-icon><ArrowRight /></el-icon></span>
             </div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import type {
   ChunkEditBody,
+  ChunkPageQuery,
   DocumentStat,
   HitTestForm,
   KbChunkVO,
@@ -7,8 +8,8 @@ import type {
   KbDatasetQuery,
   KbDatasetVO,
   KbDocumentVO,
+  KbProblemChunkVO,
   KbProblemVO,
-  ProblemBody,
   RetrievalHit
 } from './types';
 import type { AxiosPromise, PageResult } from '@/utils/api-types';
@@ -208,21 +209,38 @@ export function getProblem(problemId: number | string): AxiosPromise<KbProblemVO
   });
 }
 
-// 新增问题（文本向量化入库）
-export function addProblem(data: ProblemBody) {
+// 批量新增问题（content 一行一个问题）
+export function addProblem(datasetId: number | string, content: string): AxiosPromise<number> {
   return request({
     url: '/ai/kb/problem',
     method: 'post',
-    data: data
+    data: { datasetId, content }
   });
 }
 
-// 编辑问题（文本变更重新向量化）
-export function updateProblem(data: ProblemBody) {
+// 查询问题关联的分段（含文档名）
+export function problemChunks(problemId: number | string): AxiosPromise<KbProblemChunkVO[]> {
   return request({
-    url: '/ai/kb/problem',
+    url: '/ai/kb/problem/' + problemId + '/chunks',
+    method: 'get'
+  });
+}
+
+// 绑定分段（追加关联）
+export function bindProblemChunks(problemId: number | string, chunkIds: (number | string)[]) {
+  return request({
+    url: '/ai/kb/problem/' + problemId + '/bind',
     method: 'put',
-    data: data
+    data: { chunkIds }
+  });
+}
+
+// 解绑分段
+export function unbindProblemChunks(problemId: number | string, chunkIds: (number | string)[]) {
+  return request({
+    url: '/ai/kb/problem/' + problemId + '/unbind',
+    method: 'put',
+    data: { chunkIds }
   });
 }
 
@@ -231,6 +249,20 @@ export function delProblem(problemIds: string | number | (string | number)[]) {
   return request({
     url: '/ai/kb/problem/' + problemIds,
     method: 'delete'
+  });
+}
+
+// ==================== 分段分页 ====================
+
+// 分页查询文档分段（绑定弹窗滚动分页）
+export function pageDocumentChunks(
+  documentId: number | string,
+  query: ChunkPageQuery
+): AxiosPromise<PageResult<KbChunkVO>> {
+  return request({
+    url: '/ai/kb/document/' + documentId + '/chunk/page',
+    method: 'get',
+    params: query
   });
 }
 
@@ -257,6 +289,9 @@ export default {
   listProblem,
   getProblem,
   addProblem,
-  updateProblem,
-  delProblem
+  problemChunks,
+  bindProblemChunks,
+  unbindProblemChunks,
+  delProblem,
+  pageDocumentChunks
 };
