@@ -224,7 +224,7 @@ const handleCardCommand = async (cmd: string, row: KbDatasetVO) => {
   loadRerankModels();
     showDialog('编辑知识库');
   } else if (cmd === 'delete') {
-    await modal.confirm(`删除知识库"${row.datasetName}"？（需先清空其下文档）`);
+    await modal.confirm(`删除知识库"${row.datasetName}"？将级联删除其下全部文档、分段、向量与问题，并解除应用挂载。`);
     await delDataset(row.datasetId);
     modal.msgSuccess('删除成功');
     await getList();
