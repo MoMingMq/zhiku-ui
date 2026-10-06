@@ -1,10 +1,10 @@
 <template>
   <div class="p-2 app-container ai-kb-docs-page">
-    <el-card shadow="hover" class="table-panel">
+    <kb-chunks v-if="viewingDocument" :document="viewingDocument" @back="viewingDocument = undefined" />
+    <el-card v-else shadow="hover" class="table-panel">
       <template #header>
         <div class="toolbar-shell">
           <div class="table-heading">
-            <el-button icon="Back" link @click="emit('back')" />
             <span class="detail-title">{{ dataset?.datasetName }}</span>
             <el-tag v-if="dataset?.embedDim" type="info" size="small">维度 {{ dataset.embedDim }}</el-tag>
             <span v-if="stat" class="form-tip">
@@ -12,7 +12,6 @@
             </span>
           </div>
           <div class="toolbar-actions">
-            <el-button v-hasPermi="['ai:kb:query']" plain icon="Search" @click="hitDrawerVisible = true">命中测试</el-button>
             <el-button v-hasPermi="['ai:kb:add']" type="primary" plain icon="Upload" @click="openUpload">上传文档</el-button>
           </div>
         </div>
@@ -42,7 +41,7 @@
         </el-table-column>
         <el-table-column label="操作" fixed="right" align="center" width="240" class-name="small-padding fixed-width">
           <template #default="scope">
-            <el-button v-hasPermi="['ai:kb:query']" link type="primary" icon="View" @click="emit('open-document', scope.row)">分段</el-button>
+            <el-button v-hasPermi="['ai:kb:query']" link type="primary" icon="View" @click="viewingDocument = scope.row">分段</el-button>
             <el-button
               v-if="scope.row.status === 'D'"
               v-hasPermi="['ai:kb:edit']"
@@ -136,32 +135,6 @@
       </template>
     </el-dialog>
 
-    <!-- 命中测试抽屉 -->
-    <el-drawer v-model="hitDrawerVisible" title="命中测试" size="42%" append-to-body>
-      <el-form :model="hitForm" label-width="80px">
-        <el-form-item label="查询语句">
-          <el-input v-model="hitForm.query" placeholder="输入问题，测试分段检索命中率" @keyup.enter="handleHitTest" />
-        </el-form-item>
-        <el-form-item label="返回条数">
-          <el-input-number v-model="hitForm.topK" :min="1" :max="20" controls-position="right" />
-          <el-checkbox v-model="hitForm.rerank" style="margin-left: 16px">启用重排</el-checkbox>
-          <el-button type="primary" style="margin-left: 16px" :loading="hitTesting" @click="handleHitTest">测试</el-button>
-        </el-form-item>
-      </el-form>
-      <div v-if="hitResults.length" class="hit-results">
-        <div v-for="hit in hitResults" :key="hit.chunkId" class="hit-item">
-          <div class="hit-head">
-            <el-progress type="dashboard" :percentage="Math.round(hit.score * 100)" :width="46" :stroke-width="5" />
-            <div class="hit-meta">
-              <span class="hit-doc">{{ hit.documentName }} #{{ hit.seq }}</span>
-              <span v-if="hit.headingPath" class="hit-path">{{ hit.headingPath }}</span>
-            </div>
-          </div>
-          <div class="hit-content">{{ hit.content }}</div>
-        </div>
-      </div>
-      <el-empty v-else-if="hitTested" description="无命中结果" :image-size="60" />
-    </el-drawer>
   </div>
 </template>
 
@@ -171,19 +144,19 @@ import {
   datasetStat,
   delDocument,
   getDataset,
-  hitTest,
   listDocument,
   reingestDocument,
   retryDocument,
   updateDataset,
   uploadDocument
 } from '@/api/ai/knowledge';
-import { DocumentStat, KbDatasetVO, KbDocumentVO, RetrievalHit, documentStatusMap, isProcessingStatus } from '@/api/ai/knowledge/types';
+import { DocumentStat, KbDatasetVO, KbDocumentVO, documentStatusMap, isProcessingStatus } from '@/api/ai/knowledge/types';
+import KbChunks from './chunks.vue';
 import modal from '@/plugins/modal';
 import { parseTime } from '@/utils/zhiku';
 
 const props = defineProps<{ datasetId: number | string }>();
-const emit = defineEmits<{ (e: 'back'): void; (e: 'open-document', doc: KbDocumentVO): void }>();
+const viewingDocument = ref<KbDocumentVO | undefined>(undefined);
 
 const dataset = ref<KbDatasetVO>();
 const stat = ref<DocumentStat>();
@@ -198,12 +171,6 @@ const chunkMode = ref<'smart' | 'advanced'>('smart');
 const semanticEnabled = ref(false);
 const maxChars = ref(700);
 const overlapRatio = ref(0.15);
-
-const hitDrawerVisible = ref(false);
-const hitTesting = ref(false);
-const hitTested = ref(false);
-const hitResults = ref<RetrievalHit[]>([]);
-const hitForm = reactive({ query: '', topK: 5, rerank: false });
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -332,21 +299,6 @@ const handleDeleteDoc = async (doc: KbDocumentVO) => {
   await delDocument(doc.documentId);
   modal.msgSuccess('删除成功');
   await loadDocuments();
-};
-
-const handleHitTest = async () => {
-  if (!hitForm.query.trim()) {
-    modal.msgWarning('请输入查询语句');
-    return;
-  }
-  hitTesting.value = true;
-  hitTested.value = true;
-  try {
-    const res = await hitTest(props.datasetId, { ...hitForm });
-    hitResults.value = res.data ?? [];
-  } finally {
-    hitTesting.value = false;
-  }
 };
 
 onMounted(() => {

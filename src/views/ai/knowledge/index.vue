@@ -107,19 +107,15 @@
       </el-dialog>
     </template>
 
-    <!-- ================= 文档列表（第二层） ================= -->
-    <kb-documents v-else-if="!viewingDocument" :dataset-id="viewingDatasetId" @back="exitDetail" @open-document="openChunks" />
-
-    <!-- ================= 分段列表（第三层） ================= -->
-    <kb-chunks v-else :document="viewingDocument" @back="viewingDocument = undefined" />
+    <!-- ================= 知识库详情（左侧固定菜单布局） ================= -->
+    <kb-detail-layout v-else :dataset-id="viewingDatasetId" @back="exitDetail" />
   </div>
 </template>
 
 <script setup name="Knowledge" lang="ts">
-import KbChunks from './chunks.vue';
-import KbDocuments from './documents.vue';
+import KbDetailLayout from './detail-layout.vue';
 import { addDataset, delDataset, datasetStat, getDataset, listDataset, updateDataset } from '@/api/ai/knowledge';
-import { DocumentStat, KbDatasetForm, KbDatasetQuery, KbDatasetVO, KbDocumentVO } from '@/api/ai/knowledge/types';
+import { DocumentStat, KbDatasetForm, KbDatasetQuery, KbDatasetVO } from '@/api/ai/knowledge/types';
 import { listAiModel } from '@/api/ai/model';
 import { AiModelVO } from '@/api/ai/model/types';
 import { useLoading } from '@/hooks/async/useLoading';
@@ -136,10 +132,8 @@ const total = ref(0);
 const datasetFormRef = ref<ElFormInstance>();
 const statMap = ref<Record<string, DocumentStat>>({});
 const embedModels = ref<AiModelVO[]>([]);
-/** 第二层：正在查看的知识库 */
+/** 正在查看的知识库 */
 const viewingDatasetId = ref<number | string | undefined>(undefined);
-/** 第三层：正在查看分段的文档 */
-const viewingDocument = ref<KbDocumentVO | undefined>(undefined);
 
 const initFormData: KbDatasetForm = {
   datasetId: undefined,
@@ -251,11 +245,7 @@ const enterDetail = (row: KbDatasetVO) => {
 };
 const exitDetail = () => {
   viewingDatasetId.value = undefined;
-  viewingDocument.value = undefined;
   getList();
-};
-const openChunks = (doc: KbDocumentVO) => {
-  viewingDocument.value = doc;
 };
 
 onMounted(() => {
@@ -283,26 +273,54 @@ onMounted(() => {
 .kb-card {
   padding: 16px;
   border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+  background: var(--el-bg-color);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--el-color-primary), var(--el-color-primary-light-5));
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
 
   &:hover {
-    border-color: var(--el-color-primary);
-    box-shadow: var(--el-box-shadow-light);
+    border-color: var(--el-color-primary-light-5);
+    box-shadow: var(--el-box-shadow);
+    transform: translateY(-2px);
+
+    &::before {
+      opacity: 1;
+    }
   }
 
   .kb-card-title {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
 
     .kb-card-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, var(--el-color-primary-light-8), var(--el-color-primary-light-9));
       color: var(--el-color-primary);
-      font-size: 18px;
+      font-size: 19px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
     }
 
     .kb-card-name {
@@ -315,8 +333,9 @@ onMounted(() => {
     }
 
     .kb-card-more {
-      color: var(--el-text-color-secondary);
+      color: var(--el-text-color-placeholder);
       cursor: pointer;
+      font-size: 16px;
 
       &:hover {
         color: var(--el-color-primary);
@@ -325,10 +344,10 @@ onMounted(() => {
   }
 
   .kb-card-desc {
-    min-height: 40px;
+    min-height: 42px;
     font-size: 13px;
     color: var(--el-text-color-secondary);
-    line-height: 1.5;
+    line-height: 1.6;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -337,17 +356,23 @@ onMounted(() => {
 
   .kb-card-stat {
     display: flex;
-    gap: 14px;
-    font-size: 12px;
-    color: var(--el-text-color-secondary);
+    gap: 8px;
+
+    span {
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--el-fill-color-light);
+      color: var(--el-text-color-regular);
+    }
   }
 
   .kb-card-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-top: 1px solid var(--el-border-color-lighter);
-    padding-top: 8px;
+    border-top: 1px solid var(--el-border-color-extra-light);
+    padding-top: 10px;
     font-size: 12px;
     color: var(--el-text-color-secondary);
   }

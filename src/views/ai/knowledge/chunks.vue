@@ -19,10 +19,10 @@
       </template>
 
       <el-row :gutter="14">
-        <!-- 左：标题树（由分段标题路径构建，点击过滤该标题子树下的分段） -->
+        <!-- 左：文档标题目录（解析产物，点击定位到对应正文分段） -->
         <el-col :span="6">
           <div class="tree-panel-box">
-            <div class="tree-panel-title">目录</div>
+            <div class="tree-panel-title">文档目录</div>
             <el-tree
               ref="treeRef"
               :data="treeData"
@@ -31,7 +31,7 @@
               default-expand-all
               highlight-current
               :expand-on-click-node="false"
-              @node-click="handleNodeClick"
+              @node-click="handleNodeLocate"
             />
           </div>
         </el-col>
@@ -43,9 +43,10 @@
             <div class="chunk-grid">
               <div
                 v-for="(chunk, index) in filteredChunks"
+                :id="'chunk-' + chunk.chunkId"
                 :key="chunk.chunkId"
                 class="chunk-card"
-                :class="{ 'is-disabled': chunk.disabled === '1', 'is-dragover': dragOverIndex === index }"
+                :class="{ 'is-disabled': chunk.disabled === '1', 'is-dragover': dragOverIndex === index, 'is-located': chunk.chunkId === locatedChunkId }"
                 draggable="true"
                 @dragstart="handleDragStart(index)"
                 @dragover.prevent="dragOverIndex = index"
@@ -124,8 +125,8 @@ const loading = ref(false);
 const saving = ref(false);
 const keyword = ref('');
 const treeRef = ref();
-/** 当前选中的标题树节点 key（空串=全部） */
-const activeTreeKey = ref('');
+/** 定位高亮的分段（点击目录后短暂标记） */
+const locatedChunkId = ref<number | string | undefined>(undefined);
 
 const editDialog = reactive({ visible: false, title: '编辑分段' });
 const editFormRef = ref();
@@ -174,11 +175,6 @@ const treeData = computed<ChunkTreeNode[]>(() => {
   return root.children.length > 0 ? [root] : [];
 });
 
-const matchesTree = (chunk: KbChunkVO) => {
-  if (!activeTreeKey.value) return true;
-  return (chunk.headingPath ?? '').startsWith(activeTreeKey.value);
-};
-
 const matchesKeyword = (chunk: KbChunkVO) => {
   if (!keyword.value.trim()) return true;
   const kw = keyword.value.trim().toLowerCase();
@@ -189,10 +185,19 @@ const matchesKeyword = (chunk: KbChunkVO) => {
   );
 };
 
-const filteredChunks = computed(() => chunkList.value.filter(c => matchesTree(c) && matchesKeyword(c)));
+const filteredChunks = computed(() => chunkList.value.filter(matchesKeyword));
 
-const handleNodeClick = (node: ChunkTreeNode) => {
-  activeTreeKey.value = node.key;
+/** 目录节点点击：滚动定位到该标题子树下第一个分段并短暂高亮 */
+const handleNodeLocate = (node: ChunkTreeNode) => {
+  const target = chunkList.value.find(c => !node.key || (c.headingPath ?? '').startsWith(node.key));
+  if (!target) return;
+  locatedChunkId.value = target.chunkId;
+  nextTick(() => {
+    document.getElementById('chunk-' + target.chunkId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  setTimeout(() => {
+    locatedChunkId.value = undefined;
+  }, 2000);
 };
 
 /** —— 编辑 / 新增 —— */
@@ -331,6 +336,11 @@ onMounted(() => {
   &.is-disabled {
     opacity: 0.55;
     background-color: var(--el-fill-color-lighter);
+  }
+
+  &.is-located {
+    border-color: var(--el-color-primary);
+    box-shadow: 0 0 0 2px var(--el-color-primary-light-8);
   }
 
   .chunk-card-head {
