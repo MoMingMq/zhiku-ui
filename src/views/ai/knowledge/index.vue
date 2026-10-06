@@ -87,6 +87,12 @@
             </el-select>
             <span class="form-tip">分段规则在上传文档时设置</span>
           </el-form-item>
+          <el-form-item label="重排模型" prop="rerankModelId">
+            <el-select v-model="form.rerankModelId" placeholder="不重排（可选）" style="width: 100%" clearable>
+              <el-option v-for="m in rerankModels" :key="m.modelId" :label="m.modelName" :value="m.modelId" />
+            </el-select>
+            <span class="form-tip">应用对话检索本库时按此模型重排结果；不选且有系统默认 Rerank 时用默认，均无则不重排</span>
+          </el-form-item>
           <template v-if="form.datasetId">
             <el-form-item label="状态" prop="status">
               <el-radio-group v-model="form.status">
@@ -129,6 +135,7 @@ const total = ref(0);
 const datasetFormRef = ref<ElFormInstance>();
 const statMap = ref<Record<string, DocumentStat>>({});
 const embedModels = ref<AiModelVO[]>([]);
+const rerankModels = ref<AiModelVO[]>([]);
 /** 正在查看的知识库 */
 const viewingDatasetId = ref<number | string | undefined>(undefined);
 
@@ -180,6 +187,11 @@ const loadStat = async (datasetId: number | string) => {
   statMap.value[datasetId] = res.data;
 };
 
+const loadRerankModels = async () => {
+  const res = await listAiModel({ pageNum: 1, pageSize: 100, modelType: '3' });
+  rerankModels.value = res.data?.rows ?? [];
+};
+
 const loadEmbedModels = async () => {
   const res = await listAiModel({ pageNum: 1, pageSize: 100, modelType: '2' });
   embedModels.value = res.data?.rows ?? [];
@@ -198,6 +210,7 @@ const cancel = () => {
 const handleAdd = () => {
   resetForm();
   loadEmbedModels();
+  loadRerankModels();
   openDialog('创建知识库');
 };
 
@@ -207,6 +220,8 @@ const handleCardCommand = async (cmd: string, row: KbDatasetVO) => {
     const res = await getDataset(row.datasetId);
     Object.assign(form.value, res.data);
     loadEmbedModels();
+    loadRerankModels();
+  loadRerankModels();
     showDialog('编辑知识库');
   } else if (cmd === 'delete') {
     await modal.confirm(`删除知识库"${row.datasetName}"？（需先清空其下文档）`);

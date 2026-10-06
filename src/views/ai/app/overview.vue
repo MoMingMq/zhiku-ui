@@ -32,13 +32,9 @@
           </el-input>
         </div>
         <div class="ip-row">
-          <el-input
-            v-model="ipWhitelist"
-            placeholder="IP 白名单（如 10.0.0.1,192.168.0.0/24，留空不限）"
-            size="small"
-            style="max-width: 420px"
-          />
-          <el-button size="small" @click="saveIpWhitelist">保存白名单</el-button>
+          <el-button size="small" icon="Lock" @click="ipDialog.visible = true">
+            访问限制{{ ipWhitelist ? '（已配置）' : '' }}
+          </el-button>
         </div>
       </div>
 
@@ -75,6 +71,22 @@
       </el-table>
       <el-empty v-else-if="stats" description="暂无对话数据" :image-size="60" />
     </el-card>
+
+    <!-- 访问限制对话框（一行一个 IP，支持通配符段与 CIDR） -->
+    <el-dialog v-model="ipDialog.visible" title="访问限制" width="520px" append-to-body>
+      <el-alert
+        title="每行一条规则，支持单 IP（10.0.0.1）、通配符段（192.168.*.*）与 CIDR（172.16.0.0/16）；留空表示不限制"
+        type="info"
+        :closable="false"
+        show-icon
+        class="ip-alert"
+      />
+      <el-input v-model="ipDialog.text" type="textarea" :rows="6" placeholder="10.0.0.1&#10;192.168.*.*&#10;172.16.0.0/16" />
+      <template #footer>
+        <el-button type="primary" :loading="ipDialog.saving" @click="saveIpWhitelist">保 存</el-button>
+        <el-button @click="ipDialog.visible = false">取 消</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -107,10 +119,32 @@ const toggleShare = async (enabled: string | number | boolean) => {
   }
 };
 
+const ipDialog = reactive({ visible: false, text: '', saving: false });
+
+watch(
+  () => props.app.ipWhitelist,
+  v => {
+    ipWhitelist.text = (v ?? '').split('[,，]').join('\n');
+  },
+  { immediate: true }
+);
+
 const saveIpWhitelist = async () => {
-  await api.updateAppIpWhitelist(props.app.appId, ipWhitelist.value);
-  modal.msgSuccess('白名单已保存');
-  emit('refresh');
+  ipDialog.saving = true;
+  try {
+    // 换行分隔提交（后端兼容逗号与换行）
+    const normalized = ipDialog.text
+      .split('\n')
+      .map(s => s.trim())
+      .filter(Boolean)
+      .join(',');
+    await api.updateAppIpWhitelist(props.app.appId, normalized);
+    modal.msgSuccess('访问限制已保存');
+    ipDialog.visible = false;
+    emit('refresh');
+  } finally {
+    ipDialog.saving = false;
+  }
 };
 
 const copyUrl = async () => {

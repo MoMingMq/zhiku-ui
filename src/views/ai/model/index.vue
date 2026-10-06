@@ -163,6 +163,14 @@
             可留空：保存后点击列表「测试连接」，将按模型实际输出自动回填（决定向量库 collection 路由，如 bge-large-zh 1024、Qwen3-Embedding-8B 4096）
           </div>
         </el-form-item>
+        <el-form-item v-if="form.modelType === '1'" label="上下文长度" prop="contextWindow">
+          <el-input-number v-model="form.contextWindow" :min="1" :max="1000000" controls-position="right" placeholder="token" />
+          <span class="form-tip">模型上下文窗口上限（token）；对话应用按此预算裁剪历史与检索资料，留空按默认预算</span>
+        </el-form-item>
+        <el-form-item v-if="form.modelType === '1'" label="最大输出" prop="maxOutputTokens">
+          <el-input-number v-model="form.maxOutputTokens" :min="1" :max="100000" controls-position="right" placeholder="token" />
+          <span class="form-tip">单次回答最大输出 token（留空不限制）；应用未覆盖参数时以此为准</span>
+        </el-form-item>
         <el-form-item label="设为默认" prop="isDefault">
           <el-switch v-model="form.isDefault" active-value="1" inactive-value="0" />
           <span class="form-tip">每类型至多一个默认模型（新建知识库/应用时预选）</span>

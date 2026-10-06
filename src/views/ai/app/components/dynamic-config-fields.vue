@@ -1,18 +1,12 @@
 <template>
   <div v-if="fields.length" class="dynamic-config-fields">
     <el-form-item v-for="field in fields" :key="field.name" :label="field.label" :required="field.required">
-      <!-- 知识库多选 -->
-      <el-select
-        v-if="field.component === 'kb-multi'"
-        :model-value="kbSelection"
-        multiple
-        filterable
-        placeholder="选择知识库（检索范围=并集）"
-        style="width: 100%"
+      <!-- 知识库关联（按钮 + 对话框多选 + 已选卡片） -->
+      <kb-config-dialog
+        v-if="field.component === 'kb-config' || field.component === 'kb-multi'"
+        :model-value="modelValue.kbIds"
         @update:model-value="(v: Array<number | string>) => emitKbChange(v)"
-      >
-        <el-option v-for="kb in datasetOptions" :key="kb.datasetId" :label="kb.datasetName" :value="kb.datasetId" />
-      </el-select>
+      />
       <!-- 工具多选（复用 M3 组件交互形态：多选下拉） -->
       <el-select
         v-else-if="field.component === 'tool-multi'"
@@ -50,7 +44,7 @@
 
 <script setup lang="ts">
 import type { AppConfigField } from '@/api/ai/app/types';
-import { listDataset } from '@/api/ai/knowledge';
+import KbConfigDialog from './kb-config-dialog.vue';
 import { listAiTool } from '@/api/ai/tool';
 import type { AiToolVO } from '@/api/ai/tool/types';
 
@@ -66,7 +60,6 @@ const modelValue = reactive({
 });
 const emit = defineEmits<{ kbChange: [kbIds: Array<number | string>] }>();
 
-const datasetOptions = ref<Array<{ datasetId: number | string; datasetName: string }>>([]);
 const toolOptions = ref<AiToolVO[]>([]);
 
 /** 从 config JSON 初始化各仓 */
@@ -108,11 +101,7 @@ const emitKbChange = (v: Array<number | string>) => {
 };
 
 onMounted(async () => {
-  const [dsRes, toolRes] = await Promise.all([
-    listDataset({ pageNum: 1, pageSize: 100 }),
-    listAiTool({ pageNum: 1, pageSize: 100, status: '0' })
-  ]);
-  datasetOptions.value = dsRes.data?.rows ?? [];
+  const toolRes = await listAiTool({ pageNum: 1, pageSize: 100, status: '0' });
   toolOptions.value = toolRes.data?.rows ?? [];
 });
 

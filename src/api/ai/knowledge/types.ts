@@ -2,7 +2,9 @@ export interface KbDatasetVO extends BaseEntity {
   datasetId: number | string;
   datasetName: string;
   description: string;
+  rerankModelId?: number | string | null;
   embedModelId: number | string;
+  rerankModelId?: number | string | null;
   embedDim: number | undefined;
   /** 分块参数 JSON（mode/maxChars/overlapRatio/semanticThreshold） */
   chunkParams: string;

@@ -11,6 +11,10 @@ export interface AiModelVO extends BaseEntity {
   embedDim: number | undefined;
   /** 默认参数 JSON（temperature/maxTokens/topP） */
   params: string;
+  /** 上下文长度上限（token，空=未知） */
+  contextWindow: number | undefined;
+  /** 最大输出 token（空=不限制） */
+  maxOutputTokens: number | undefined;
   isDefault: string;
   status: string;
 }
@@ -27,6 +31,8 @@ export interface AiModelForm {
   embedDim: number | undefined;
   isDefault: string;
   status: string;
+  contextWindow?: number;
+  maxOutputTokens?: number;
 }
 
 export interface AiModelQuery extends PageQuery {

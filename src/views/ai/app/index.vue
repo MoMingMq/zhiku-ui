@@ -75,6 +75,11 @@
             <el-option label="高级编排（敬请期待）" value="workflow" disabled />
           </el-select>
         </el-form-item>
+        <el-form-item label="对话模型" prop="modelId">
+          <el-select v-model="form.modelId" placeholder="选择对话模型" style="width: 100%">
+            <el-option v-for="m in llmModels" :key="m.modelId" :label="`${m.modelName}（${m.modelCode}）`" :value="m.modelId" />
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
@@ -90,6 +95,7 @@
 import api from '@/api/ai/app';
 import AppDetailLayout from './detail-layout.vue';
 import type { AiAppForm, AiAppQuery, AiAppVO } from '@/api/ai/app/types';
+import { listAiModel } from '@/api/ai/model';
 import { useLoading } from '@/hooks/async/useLoading';
 import modal from '@/plugins/modal';
 import { parseTime } from '@/utils/zhiku';
@@ -113,8 +119,11 @@ const initFormData: AiAppForm = { appId: undefined, appName: '', description: ''
 const form = reactive<AiAppForm>({ ...initFormData });
 const rules: FormRules = {
   appName: [{ required: true, message: '应用名称不能为空', trigger: 'blur' }],
-  appType: [{ required: true, message: '必须选择应用类型', trigger: 'change' }]
+  appType: [{ required: true, message: '必须选择应用类型', trigger: 'change' }],
+  modelId: [{ required: true, message: '必须选择对话模型', trigger: 'change' }]
 };
+
+const llmModels = ref<Array<{ modelId: number | string; modelName: string; modelCode: string }>>([]);
 
 const isElementIcon = (icon: string | null | undefined): boolean => /^[A-Z][A-Za-z0-9]*$/.test(icon ?? '');
 
@@ -172,8 +181,10 @@ const handleCardCommand = async (cmd: string, row: AiAppVO) => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
   getList();
+  const res = await listAiModel({ pageNum: 1, pageSize: 100, modelType: '1' });
+  llmModels.value = res.data?.rows ?? [];
 });
 </script>
 
