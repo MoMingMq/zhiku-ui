@@ -15,22 +15,27 @@
       </div>
     </div>
 
-    <!-- 选择：知识库卡片列表（带分页，形态对齐知识库列表页） -->
-    <el-dialog v-model="selectDialog.visible" title="选择知识库" width="720px" append-to-body>
-      <div v-loading="selectDialog.loading" class="kb-grid">
+    <!-- 选择：知识库卡片列表（带分页+勾选框，样式对齐知识库列表页；append-to-body 下样式用非 scoped 块） -->
+    <el-dialog v-model="selectDialog.visible" title="选择知识库" width="760px" append-to-body>
+      <div v-loading="selectDialog.loading" class="kb-select-grid">
         <div
           v-for="kb in datasetOptions"
           :key="kb.datasetId"
-          class="kb-grid-card"
+          class="kb-select-card"
           :class="{ 'is-checked': checkedIds.includes(kb.datasetId) }"
           @click="toggleCheck(kb.datasetId)"
         >
-          <div class="kb-grid-title">
-            <el-icon class="kb-grid-icon"><Collection /></el-icon>
-            <span class="kb-grid-name" :title="kb.datasetName">{{ kb.datasetName }}</span>
-            <el-icon v-if="checkedIds.includes(kb.datasetId)" class="kb-grid-check"><CircleCheckFilled /></el-icon>
+          <div class="kb-select-title">
+            <el-icon class="kb-select-icon"><Collection /></el-icon>
+            <span class="kb-select-name" :title="kb.datasetName">{{ kb.datasetName }}</span>
+            <el-checkbox
+              :model-value="checkedIds.includes(kb.datasetId)"
+              class="kb-select-check"
+              @click.stop
+              @change="() => toggleCheck(kb.datasetId)"
+            />
           </div>
-          <div class="kb-grid-desc">{{ kb.description || '暂无描述' }}</div>
+          <div class="kb-select-desc">{{ kb.description || '暂无描述' }}</div>
         </div>
         <el-empty v-if="!selectDialog.loading && datasetOptions.length === 0" description="暂无知识库" :image-size="60" />
       </div>
@@ -53,11 +58,11 @@
       <el-form label-width="100px">
         <el-form-item label="检索条数">
           <el-input-number v-model="paramDraft.topK" :min="1" :max="20" />
-          <span class="form-tip">多库召回并集后的 Top N</span>
+          <span class="kb-param-tip">多库召回并集后的 Top N</span>
         </el-form-item>
         <el-form-item label="相似度阈值">
           <el-input-number v-model="paramDraft.minScore" :min="0" :max="100" :step="5" />
-          <span class="form-tip">低于该分数的命中被过滤（百分比，0=不过滤）</span>
+          <span class="kb-param-tip">低于该分数的命中被过滤（百分比，0=不过滤）</span>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -107,7 +112,6 @@ const loadDatasets = async () => {
     datasetOptions.value = res.data?.rows ?? [];
     total.value = res.data?.total ?? 0;
     datasetOptions.value.forEach(kb => allDatasetMap.value.set(kb.datasetId, kb));
-    // 已选但不在映射里的（历史关联）：再补拉一次全量补齐名称
     if (allDatasetMap.value.size < total.value) {
       const all = await listDataset({ pageNum: 1, pageSize: 100 });
       (all.data?.rows ?? []).forEach(kb => allDatasetMap.value.set(kb.datasetId, kb));
@@ -159,6 +163,7 @@ const unbind = (datasetId: number | string) => {
 onMounted(loadDatasets);
 </script>
 
+<!-- scoped 样式：仅覆盖本组件直渲染区（按钮/已选卡片） -->
 <style lang="scss" scoped>
 .kb-config {
   width: 100%;
@@ -166,12 +171,6 @@ onMounted(loadDatasets);
   .kb-actions {
     display: flex;
     gap: 8px;
-  }
-
-  .form-tip {
-    margin-left: 8px;
-    font-size: 12px;
-    color: var(--el-text-color-secondary);
   }
 
   .kb-cards {
@@ -209,67 +208,107 @@ onMounted(loadDatasets);
       }
     }
   }
+}
+</style>
 
-  .kb-grid {
-    min-height: 160px;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+<!-- 非 scoped：对话框 append-to-body 挂 body，scoped 样式作用不到（此前卡片样式因此失效退化成列表） -->
+<style lang="scss">
+.kb-select-grid {
+  min-height: 160px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+
+  .kb-select-card {
+    padding: 14px;
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
     gap: 10px;
+    background: var(--el-bg-color);
+    position: relative;
 
-    .kb-grid-card {
-      padding: 12px;
-      border: 1px solid var(--el-border-color-lighter);
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      border-radius: 10px 10px 0 0;
+      background: linear-gradient(90deg, var(--el-color-primary), var(--el-color-primary-light-5));
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
 
-      &:hover {
-        border-color: var(--el-color-primary-light-5);
-      }
+    &:hover {
+      border-color: var(--el-color-primary-light-5);
+      transform: translateY(-1px);
+      box-shadow: var(--el-box-shadow-light);
 
-      &.is-checked {
-        border-color: var(--el-color-primary);
-        background: var(--el-color-primary-light-9);
-      }
-
-      .kb-grid-title {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-
-        .kb-grid-icon {
-          color: var(--el-color-primary);
-        }
-
-        .kb-grid-name {
-          flex: 1;
-          min-width: 0;
-          font-size: 13px;
-          font-weight: 600;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .kb-grid-check {
-          color: var(--el-color-primary);
-        }
-      }
-
-      .kb-grid-desc {
-        min-height: 34px;
-        font-size: 12px;
-        color: var(--el-text-color-secondary);
-        line-height: 1.5;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
+      &::before {
+        opacity: 1;
       }
     }
+
+    &.is-checked {
+      border-color: var(--el-color-primary);
+      background: var(--el-color-primary-light-9);
+
+      &::before {
+        opacity: 1;
+      }
+    }
+
+    .kb-select-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .kb-select-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, var(--el-color-primary-light-8), var(--el-color-primary-light-9));
+        color: var(--el-color-primary);
+        font-size: 17px;
+        flex-shrink: 0;
+      }
+
+      .kb-select-name {
+        flex: 1;
+        min-width: 0;
+        font-size: 14px;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .kb-select-check {
+        height: auto;
+      }
+    }
+
+    .kb-select-desc {
+      min-height: 36px;
+      font-size: 12px;
+      color: var(--el-text-color-secondary);
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
   }
+}
+
+.kb-param-tip {
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 </style>

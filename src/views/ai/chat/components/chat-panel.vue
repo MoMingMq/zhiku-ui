@@ -242,7 +242,43 @@ defineExpose({
 
     .chat-prompts {
       width: 100%;
-      max-width: 560px;
+      max-width: 600px;
+
+      /* EPX Prompts 主题化：卡片式推荐问题，贴合 Element 主题变量 */
+      :deep(.elx-prompts) {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        background: transparent;
+      }
+
+      :deep(.elx-prompts__item) {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 14px;
+        border: 1px solid var(--el-border-color-lighter);
+        border-radius: 10px;
+        background: var(--el-bg-color);
+        color: var(--el-text-color-regular);
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.2s;
+        overflow: hidden;
+
+        &:hover {
+          border-color: var(--el-color-primary-light-5);
+          color: var(--el-color-primary);
+          transform: translateY(-1px);
+          box-shadow: var(--el-box-shadow-light);
+        }
+      }
+
+      :deep(.elx-prompts__item-content) {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
     }
   }
 

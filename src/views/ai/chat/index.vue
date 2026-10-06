@@ -10,11 +10,12 @@
           <div class="conv-actions">
             <el-button size="small" type="primary" plain icon="Plus" :disabled="!selectedAppId" @click="newConversation">新对话</el-button>
           </div>
-          <!-- Element Plus X Conversations 会话列表（内置激活态/菜单） -->
+          <!-- Element Plus X Conversations 会话列表（内置激活态/菜单；样式经 :deep 适配主题与容器宽） -->
           <Conversations
             v-model:active="activeKey"
             class="conv-list"
             :items="conversationItems"
+            :items-style="{ backgroundColor: 'transparent' }"
             @change="onConversationChange"
             @menu-command="onConversationMenu"
           />
@@ -182,56 +183,35 @@ onMounted(loadApps);
     .conv-list {
       flex: 1;
       min-height: 0;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
+      max-width: 100%;
 
-      .conv-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 10px;
+      /* EPX Conversations 根列表带内联白底/固定 280 宽，强制适配容器与主题 */
+      :deep(.elx-conversations__list) {
+        width: 100% !important;
+        background-color: transparent !important;
+        padding: 0 0 4px 0;
+      }
+
+      :deep(.elx-conversations) {
+        width: 100%;
+        background-color: transparent;
+      }
+
+      :deep(.elx-conversations-item) {
         border-radius: 8px;
-        cursor: pointer;
-        border: 1px solid transparent;
-        transition: all 0.2s;
-
-        .conv-icon {
-          color: var(--el-text-color-secondary);
-          flex-shrink: 0;
-        }
-
-        .conv-title {
-          flex: 1;
-          min-width: 0;
-          font-size: 13px;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .conv-ops {
-          display: none;
-          gap: 6px;
-
-          .el-icon:hover {
-            color: var(--el-color-primary);
-          }
-        }
+        margin-bottom: 2px;
 
         &:hover {
-          background: var(--el-fill-color-light);
-
-          .conv-ops {
-            display: inline-flex;
-          }
+          background-color: var(--el-fill-color-light);
         }
+      }
 
-        &.is-active {
-          border-color: var(--el-color-primary-light-5);
-          background: var(--el-fill-color-light);
-        }
+      :deep(.elx-conversations-item--active) {
+        background-color: var(--el-color-primary-light-9);
+      }
+
+      :deep(.elx-conversations-item__content) {
+        font-size: 13px;
       }
     }
   }
