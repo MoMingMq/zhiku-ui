@@ -515,7 +515,13 @@ onMounted(() => {
   }
 
   &.is-active {
-    background: var(--el-color-primary-light-9);
+    background: var(--el-fill-color);
+    box-shadow: inset 3px 0 0 var(--el-color-primary);
+
+    .bind-doc-name {
+      color: var(--el-color-primary);
+      font-weight: 600;
+    }
   }
 
   .bind-doc-icon {
@@ -561,7 +567,11 @@ onMounted(() => {
 
   &.is-bound {
     border-color: var(--el-color-primary);
-    background: var(--el-color-primary-light-9);
+    background: var(--el-fill-color);
+
+    .bind-chunk-title {
+      color: var(--el-color-primary);
+    }
   }
 
   .bind-check {

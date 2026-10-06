@@ -66,8 +66,9 @@ onMounted(async () => {
   flex-direction: row !important;
   gap: 12px;
   align-items: stretch;
-  padding: 8px;
-  min-height: calc(100vh - 120px);
+  /* 全高布局：app-main 固定头+标签页 padding-top 111px + padding-bottom 12px，侧栏与内容区各自独立滚动 */
+  height: calc(100vh - 123px);
+  overflow: hidden;
 }
 
 .layout-side {
@@ -78,6 +79,7 @@ onMounted(async () => {
   border-radius: 8px;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 
   .side-header {
     display: flex;
@@ -119,6 +121,7 @@ onMounted(async () => {
   .side-menu {
     border-right: none;
     flex: 1;
+    overflow-y: auto;
   }
 
   .side-footer {
@@ -130,5 +133,7 @@ onMounted(async () => {
 .layout-content {
   flex: 1;
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
 }
 </style>

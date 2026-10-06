@@ -41,7 +41,8 @@
         </el-table-column>
         <el-table-column label="操作" fixed="right" align="center" width="150" class-name="small-padding fixed-width">
           <template #default="scope">
-            <el-tooltip content="详情" placement="top">
+            <!-- 操作与状态机对齐：详情仅可用（分段/向量完整）；删除仅可用/失败（处理中删除与入库管线竞态，后端同步拦截） -->
+            <el-tooltip v-if="scope.row.status === '4'" content="详情" placement="top">
               <el-button v-hasPermi="['ai:kb:query']" link type="primary" icon="View" @click="viewingDocument = scope.row"></el-button>
             </el-tooltip>
             <el-tooltip v-if="scope.row.status === 'D'" content="重试" placement="top">
@@ -50,7 +51,7 @@
             <el-tooltip v-if="scope.row.status === '4' || scope.row.status === 'D'" content="重切" placement="top">
               <el-button v-hasPermi="['ai:kb:edit']" link type="primary" icon="Refresh" @click="handleReingest(scope.row)"></el-button>
             </el-tooltip>
-            <el-tooltip content="删除" placement="top">
+            <el-tooltip v-if="scope.row.status === '4' || scope.row.status === 'D'" content="删除" placement="top">
               <el-button v-hasPermi="['ai:kb:remove']" link type="danger" icon="Delete" @click="handleDeleteDoc(scope.row)"></el-button>
             </el-tooltip>
           </template>

@@ -190,6 +190,14 @@ export function reorderChunks(documentId: number | string, chunkIds: (number | s
   });
 }
 
+// 查询分段已绑定的问题（编辑弹窗右侧面板；绑定/解绑复用问题侧接口）
+export function chunkProblems(chunkId: number | string): AxiosPromise<KbProblemVO[]> {
+  return request({
+    url: '/ai/kb/document/chunk/' + chunkId + '/problems',
+    method: 'get'
+  });
+}
+
 // ==================== 问题 ====================
 
 // 查询问题列表
@@ -286,6 +294,7 @@ export default {
   addChunk,
   delChunk,
   reorderChunks,
+  chunkProblems,
   listProblem,
   getProblem,
   addProblem,

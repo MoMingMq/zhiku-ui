@@ -171,6 +171,7 @@
 <script setup lang="ts">
 import { NavTypeEnum } from '@/enums/NavTypeEnum';
 import { SideThemeEnum } from '@/enums/SideThemeEnum';
+import { useThemeDark } from '@/hooks/common/useTheme';
 import modal from '@/plugins/modal';
 import defaultSettings from '@/settings';
 import { useAppStore } from '@/store/modules/app';
@@ -190,12 +191,8 @@ const storeSettings = computed(() => settingsStore);
 const predefineColors = ref(['#409EFF', '#ff4500', '#ff8c00', '#ffd700', '#90ee90', '#00ced1', '#1e90ff', '#c71585']);
 const navType = ref(settingsStore.navType);
 const radiusBase = ref(settingsStore.radiusBase);
-// 是否暗黑模式
-const isDark = useDark({
-  storageKey: 'useDarkKey',
-  valueDark: 'dark',
-  valueLight: 'light'
-});
+// 是否暗黑模式（全局单例：与业务组件共享同一响应源，见 hooks/common/useTheme）
+const isDark = useThemeDark();
 // 匹配菜单颜色
 watch(isDark, () => {
   if (isDark.value) {
